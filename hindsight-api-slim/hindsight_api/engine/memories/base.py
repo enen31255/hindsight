@@ -209,6 +209,37 @@ def document_attachment_filenames(record: "Mapping | None") -> dict[str, str]:
     return {str(k): str(v) for k, v in decoded.items() if k and v}
 
 
+# ------------------------------------------------------------------ stats summary types
+
+
+@dataclass(frozen=True)
+class NameCount:
+    """A name and how often it appears in a stats summary's window."""
+
+    name: str
+    count: int
+
+
+@dataclass(frozen=True)
+class SummaryMemory:
+    """One memory a stats summary quotes; ``proof_count`` is set for observations."""
+
+    text: str
+    time: datetime
+    proof_count: int | None = None
+
+
+@dataclass(frozen=True)
+class StatsSummaryAggregates:
+    """What ``stats_summary`` adds up for a window, besides the per-hour counts."""
+
+    documents: int
+    harnesses: list[NameCount]
+    entities: list[NameCount]
+    strongest_observation: SummaryMemory | None
+    first_memory: SummaryMemory | None
+
+
 # ------------------------------------------------------------------ document and chunk types
 
 
@@ -2477,8 +2508,9 @@ class MemoriesExtension(Extension, ABC):
         trunc: str,
         since: datetime,
         tag_groups: "list[TagGroup] | None" = None,
+        until: datetime | None = None,
     ) -> list[dict[str, Any]]:
-        """``[{"bucket": datetime, "fact_type": str, "count": int}]`` since ``since``.
+        """``[{"bucket": datetime, "fact_type": str, "count": int}]`` in ``[since, until)`` (open-ended without ``until``).
 
         Memories bucketed by ``time_field`` truncated to ``trunc`` (minute / hour /
         day) on UTC boundaries, broken down by fact_type — the caller fills the
@@ -2497,16 +2529,15 @@ class MemoriesExtension(Extension, ABC):
         end: datetime,
         entity_limit: int,
         tag_groups: "list[TagGroup] | None" = None,
-    ) -> dict[str, Any]:
-        """A bank's ``[start, end)`` summed up: what a year-in-numbers view needs.
+    ) -> StatsSummaryAggregates:
+        """A bank's ``[start, end)`` summed up, besides the per-hour counts ``memories_timeseries`` gives.
 
-        ``{"documents": int, "harnesses": [{name, count}], "entities": [{name, count}],
-        "strongest": {text, proof_count, ts} | None, "first": {text, ts} | None}``.
         Memories are placed on ``COALESCE(mentioned_at, created_at)``; documents on
         ``created_at``. ``harnesses`` counts the window's documents per ``harness:<id>``
         tag, ``entities`` the window's memories per mentioned entity (top ``entity_limit``),
-        ``strongest`` is the observation with the highest ``proof_count`` and ``first`` the
-        earliest memory. A store must aggregate in place: no memory list crosses the wire.
+        ``strongest_observation`` is the one with the highest ``proof_count`` and
+        ``first_memory`` the earliest memory. A store must aggregate in place: no memory
+        list crosses the wire.
         """
         raise NotImplementedError
 
@@ -4696,4 +4727,7 @@ __all__ = [
     "build_fact_records",
     "build_text_signals",
     "source_key",
+    "NameCount",
+    "StatsSummaryAggregates",
+    "SummaryMemory",
 ]

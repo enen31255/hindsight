@@ -697,6 +697,7 @@ from .embeddings import (
 )
 from .interface import BankConfigState, BankTemplateImportWrite, MemoryEngineInterface
 from .memories import sql_memories
+from .memories.base import StatsSummaryAggregates
 from .memories.base import watermark_may_postdate as _may_need_refresh
 from .page_markdown import EMPTY_PAGE_NOTICE
 from .schema import _is_oracle, fq_table
@@ -1953,6 +1954,21 @@ class MemoryTimeseriesBucketData:
             "experience": self.experience,
             "observation": self.observation,
         }
+
+
+# A year, leap or not: the stats summary returns one bucket per active hour, so the window is capped.
+_STATS_SUMMARY_MAX_WINDOW = timedelta(days=366)
+
+
+@dataclass
+class StatsSummaryData:
+    """A bank's window summed up (engine-side): per-hour counts plus the store's aggregates."""
+
+    bank_id: str
+    start_date: str
+    end_date: str
+    hours: list[MemoryTimeseriesBucketData]
+    aggregates: StatsSummaryAggregates
 
 
 @dataclass(frozen=True)
@@ -17719,20 +17735,24 @@ class MemoryEngine(MemoryEngineInterface):
         end: datetime,
         request_context: "RequestContext",
         entity_limit: int = 50,
-    ) -> dict[str, Any]:
+    ) -> StatsSummaryData:
         """A bank's ``[start, end)`` summed up in the database.
 
         Per-hour counts by fact type on UTC hours (only hours that have memories, so a
         client can place them in its own time zone), plus the store's aggregates: the
         window's documents and their coding agents, the most mentioned entities, the
         strongest observation and the first memory. Tag-scoped callers only see what
-        their scope admits.
+        their scope admits. The window is at most a (leap) year: hourly buckets grow with it.
         """
         await self._authenticate_tenant(request_context)
         tag_scope = await self._authorize_bank_read(bank_id, BankReadOperation.GET_STATS_SUMMARY, request_context)
         await self._require_bank_exists(bank_id)
         if end <= start:
             raise OperationValidationError("end_date must be after start_date", status_code=400)
+        if end - start > _STATS_SUMMARY_MAX_WINDOW:
+            raise OperationValidationError(
+                f"The window can span at most {_STATS_SUMMARY_MAX_WINDOW.days} days", status_code=400
+            )
         from .memories import get_memories
 
         store = get_memories()
@@ -17744,9 +17764,10 @@ class MemoryEngine(MemoryEngineInterface):
                 time_field="mentioned_at",
                 trunc="hour",
                 since=start,
+                until=end,
                 tag_groups=tag_scope,
             )
-            summary = await store.stats_summary(
+            aggregates = await store.stats_summary(
                 conn=conn,
                 fq_table=fq_table,
                 bank_id=bank_id,
@@ -17756,23 +17777,24 @@ class MemoryEngine(MemoryEngineInterface):
                 tag_groups=tag_scope,
             )
 
-        hours: dict[datetime, dict[str, Any]] = {}
+        hours: dict[datetime, MemoryTimeseriesBucketData] = {}
         for row in rows:
             bucket = row["bucket"]
             bucket = bucket.replace(tzinfo=timezone.utc) if bucket.tzinfo is None else bucket.astimezone(timezone.utc)
-            if bucket >= end or row["fact_type"] not in ("world", "experience", "observation"):
-                continue
-            entry = hours.setdefault(
-                bucket, {"time": bucket.isoformat(), "world": 0, "experience": 0, "observation": 0}
-            )
-            entry[row["fact_type"]] += row["count"]
-        return {
-            "bank_id": bank_id,
-            "start_date": start.isoformat(),
-            "end_date": end.isoformat(),
-            "hours": [hours[k] for k in sorted(hours)],
-            **summary,
-        }
+            entry = hours.setdefault(bucket, MemoryTimeseriesBucketData(time=bucket.isoformat()))
+            if row["fact_type"] == "world":
+                entry.world += row["count"]
+            elif row["fact_type"] == "experience":
+                entry.experience += row["count"]
+            elif row["fact_type"] == "observation":
+                entry.observation += row["count"]
+        return StatsSummaryData(
+            bank_id=bank_id,
+            start_date=start.isoformat(),
+            end_date=end.isoformat(),
+            hours=[hours[k] for k in sorted(hours)],
+            aggregates=aggregates,
+        )
 
     async def get_entity(
         self,

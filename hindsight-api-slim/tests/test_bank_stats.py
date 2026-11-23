@@ -264,7 +264,7 @@ async def test_stats_summary_sums_up_the_window(api_client, test_bank_id):
 
         # A window before any of it holds nothing.
         response = await api_client.get(
-            url, params={"start_date": "2000-01-01T00:00:00Z", "end_date": "2001-01-01T00:00:00Z"}
+            url, params={"start_date": "2000-01-01T00:00:00Z", "end_date": "2000-12-31T00:00:00Z"}
         )
         assert response.status_code == 200
         empty = response.json()
@@ -272,6 +272,11 @@ async def test_stats_summary_sums_up_the_window(api_client, test_bank_id):
 
         response = await api_client.get(
             url, params={"start_date": "2001-01-01T00:00:00Z", "end_date": "2000-01-01T00:00:00Z"}
+        )
+        assert response.status_code == 400
+        # More than a year of hourly buckets is refused.
+        response = await api_client.get(
+            url, params={"start_date": "2000-01-01T00:00:00Z", "end_date": "2002-01-01T00:00:00Z"}
         )
         assert response.status_code == 400
     finally:

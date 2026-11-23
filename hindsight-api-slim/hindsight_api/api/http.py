@@ -6221,21 +6221,22 @@ def _register_routes(app: FastAPI):
                 end=end_date if end_date.tzinfo else end_date.replace(tzinfo=timezone.utc),
                 request_context=request_context,
             )
-            strongest, first = data["strongest"], data["first"]
+            agg = data.aggregates
+            strongest, first = agg.strongest_observation, agg.first_memory
             return StatsSummaryResponse(
-                bank_id=data["bank_id"],
-                start_date=data["start_date"],
-                end_date=data["end_date"],
-                hours=[MemoryTimeseriesBucket(**h) for h in data["hours"]],
-                documents=data["documents"],
-                harnesses=[SummaryCount(**h) for h in data["harnesses"]],
-                entities=[SummaryCount(**e) for e in data["entities"]],
+                bank_id=data.bank_id,
+                start_date=data.start_date,
+                end_date=data.end_date,
+                hours=[MemoryTimeseriesBucket(**h.as_dict()) for h in data.hours],
+                documents=agg.documents,
+                harnesses=[SummaryCount(name=h.name, count=h.count) for h in agg.harnesses],
+                entities=[SummaryCount(name=e.name, count=e.count) for e in agg.entities],
                 strongest_observation=SummaryMemory(
-                    text=strongest["text"], time=strongest["ts"], proof_count=strongest["proof_count"]
+                    text=strongest.text, time=strongest.time, proof_count=strongest.proof_count
                 )
                 if strongest
                 else None,
-                first_memory=SummaryMemory(text=first["text"], time=first["ts"]) if first else None,
+                first_memory=SummaryMemory(text=first.text, time=first.time) if first else None,
             )
         except OperationValidationError as e:
             raise HTTPException(status_code=e.status_code, detail=e.reason)

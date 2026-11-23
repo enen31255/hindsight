@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any
 
 from ...search.tags import TagClause, TagGroup, build_tag_groups_where_clause
+from ..base import NameCount, StatsSummaryAggregates, SummaryMemory
 
 
 async def consolidation_freshness(*, conn, fq_table: Callable[[str], str], bank_id: str) -> dict[str, Any]:
@@ -152,26 +153,30 @@ async def memories_timeseries(
     trunc: str,
     since: datetime,
     tag_groups: list[TagGroup] | None = None,
+    until: datetime | None = None,
 ) -> list[dict[str, Any]]:
-    """Memories bucketed by ``time_field`` (truncated to ``trunc``) and fact_type.
+    """Memories bucketed by ``time_field`` (truncated to ``trunc``) and fact_type, in ``[since, until)``.
 
     ``time_field`` is whitelisted by the caller before it reaches here — it is
     interpolated into SQL. Event-time fields fall back to ``created_at`` per row so
     rows without an event timestamp still appear.
     """
     bucket_expr = time_field if time_field == "created_at" else f"COALESCE({time_field}, created_at)"
-    groups = build_tag_groups_where_clause(tag_groups, 3)
+    # A bounded window (the stats summary of a past year) must not scan everything after it.
+    until_sql = f"AND {bucket_expr} < $3" if until else ""
+    groups = build_tag_groups_where_clause(tag_groups, 4 if until else 3)
     rows = await conn.fetch(
         f"""
         SELECT date_trunc('{trunc}', {bucket_expr} AT TIME ZONE 'UTC') AS bucket,
                fact_type, COUNT(*) AS count
         FROM {fq_table("memory_units")}
-        WHERE bank_id = $1 AND {bucket_expr} >= $2 {groups.sql}
+        WHERE bank_id = $1 AND {bucket_expr} >= $2 {until_sql} {groups.sql}
         GROUP BY bucket, fact_type
         ORDER BY bucket
         """,
         bank_id,
         since,
+        *([until] if until else []),
         *groups.params,
     )
     return [{"bucket": r["bucket"], "fact_type": r["fact_type"], "count": r["count"]} for r in rows]
@@ -186,14 +191,14 @@ async def stats_summary(
     end: datetime,
     entity_limit: int,
     tag_groups: list[TagGroup] | None = None,
-) -> dict[str, Any]:
+) -> StatsSummaryAggregates:
     """A bank's ``[start, end)`` summed up in the database: what a year-in-numbers view needs.
 
     Memories are placed on ``COALESCE(mentioned_at, created_at)``, like the event-time
     timeseries. Returns ``documents`` (created in the window), ``harnesses`` (those
     documents per ``harness:<id>`` tag), ``entities`` (the names most memories in the
-    window mention), ``strongest`` (the observation backed by most facts) and
-    ``first`` (the earliest memory); the per-hour counts come from
+    window mention), ``strongest_observation`` (the observation backed by most facts) and
+    ``first_memory`` (the earliest memory); the per-hour counts come from
     ``memories_timeseries``. Only aggregates and two rows cross the wire.
     """
     from ...db import create_data_access_ops  # noqa: PLC0415
@@ -256,13 +261,17 @@ async def stats_summary(
         """,
         *doc_params,
     )
-    return {
-        "documents": int(documents or 0),
-        "harnesses": [{"name": r["tag"][len("harness:") :], "count": int(r["count"])} for r in harnesses],
-        "entities": [{"name": r["name"], "count": int(r["count"])} for r in entities],
-        "strongest": dict(strongest) if strongest else None,
-        "first": dict(first) if first else None,
-    }
+    return StatsSummaryAggregates(
+        documents=int(documents or 0),
+        harnesses=[NameCount(name=r["tag"][len("harness:") :], count=int(r["count"])) for r in harnesses],
+        entities=[NameCount(name=r["name"], count=int(r["count"])) for r in entities],
+        strongest_observation=SummaryMemory(
+            text=strongest["text"], time=strongest["ts"], proof_count=int(strongest["proof_count"])
+        )
+        if strongest
+        else None,
+        first_memory=SummaryMemory(text=first["text"], time=first["ts"]) if first else None,
+    )
 
 
 async def observation_scope_counts(
