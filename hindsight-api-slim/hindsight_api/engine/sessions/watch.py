@@ -636,6 +636,18 @@ _SECRET = re.compile(
 )
 
 
+# "Your code uses `X`", "the change sets `X`": a claim about what the work holds, with the code quoted.
+WORK_HAS = re.compile(
+    r"\b(?:your|my|the) (?:code|change|edit|fix|work|implementation|function)\s+"
+    r"(?:still |now )?(?:uses|has|keeps|sets|does|returns|calls|checks)\s+`([^`]{4,})`",
+    re.IGNORECASE,
+)
+
+
+def _squash(s: str) -> str:
+    return re.sub(r"\s+", "", s)
+
+
 def accept_note(state: WatchState, m: Moment, text: str, memory_ids: list[str]) -> bool:
     """Whether a note reaches the agent, recording it when it does: never the same memory twice.
     A heads-up does not use its memory up: going against it later is still worth saying."""
@@ -650,6 +662,12 @@ def accept_note(state: WatchState, m: Moment, text: str, memory_ids: list[str]) 
     # A bare literal is no note: "AMB_RECALL_MAX_CHUNK_TOKENS=0" or a lone shell loop came back with
     # no word on what rule it stands for or why (beta), and the agent can't act on that.
     if len(_PROSE_WORD.findall(re.sub(r"`[^`]*`", " ", text))) < MIN_NOTE_WORDS:
+        return False
+    # Code the note says the work has must be in the work: on sdebench dedupe-amended (2026-11-23)
+    # "Your code uses `(rec["email"], rec["updated"])`" quoted the regression commit's line, the
+    # agent's code no longer had it, and the agent called the note wrong.
+    work = _squash(" ".join([m.text, m.diff, *m.recent]))
+    if m.trigger != "task" and any(_squash(c) not in work for c in WORK_HAS.findall(text)):
         return False
     if AGREES_WITH_RULE.search(lead) and not CLAIMS_CONFLICT.search(
         NEGATED_CLAIM.sub("", AGREES_WITH_RULE.sub("", text))

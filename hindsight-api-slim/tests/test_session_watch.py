@@ -736,3 +736,13 @@ def test_a_note_saying_the_change_matches_your_request_is_not_a_note():
         "only `Search`, `Settings`, and `New session`."
     )
     assert not W.accept_note(s, edit, said, ["m1"])
+
+
+def test_a_conflict_quoting_code_the_work_does_not_have_is_not_sent():
+    """sdebench dedupe-amended (2026-11-23): the note said the agent's code used the regression
+    commit's key, the code no longer had it, and the agent called the note wrong."""
+    note = 'You contradict the rule: a duplicate key is lowercased email, same calendar day. Your code uses `(rec["email"], rec["updated"])`.'
+    stale = W.Moment(trigger="failure", text="FAILED test_dedupe", recent=["Edit crmsync/dedupe.py"], diff="")
+    assert not W.accept_note(W.WatchState(), stale, note, ["m1"])
+    seen = W.Moment(trigger="edit", text="", recent=[], diff='+    key = (rec["email"],  rec["updated"])')
+    assert W.accept_note(W.WatchState(), seen, note, ["m1"])
