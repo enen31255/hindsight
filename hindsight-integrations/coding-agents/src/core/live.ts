@@ -39,6 +39,9 @@ export const NOTE_DISMISS = noteDismiss("<number>");
  * which loses the quote that sets the line apart in the reply (11 of 84 lines on 2026-11-13).
  * "An empty line between two thoughts": markdown joins consecutive "> " lines into one paragraph, so
  * 30 thoughts in a reply rendered as one unreadable block (2026-11-18).
+ * "A past session's words are a source": "wrong" used to mean "its source does not say it, or it is
+ * outdated", and on sdebench seqledger the agent called a correct past-chat rule wrong because the
+ * repo did not hold it yet, and was nudged (2026-11-20). Wrong now needs a contradiction.
  */
 export const LIVE_DECLARATION =
   "Hindsight is this project's long-term memory, and it thinks alongside you. As you work, thoughts " +
@@ -46,7 +49,8 @@ export const LIVE_DECLARATION =
   "recalls a project decision, and it holds even when the request does not mention it: a fix that " +
   "contradicts a past decision is a wrong fix. Each thought says where it was recalled from: check it; " +
   "if the source says what the thought claims, act on it as part of the task; ignore it only if the " +
-  "source does not say so, or it does not touch your work. Share every thought with the user in your " +
+  "source does not say so, or it does not touch your work. A past session's words are a source: a rule " +
+  "the code does not show yet is not wrong, it is what to build. Share every thought with the user in your " +
   "reply, one line each, by its number, so they see memory thinking. Copy the line below exactly, starting " +
   'with the "> " that sets it apart from your answer, and leave an empty line between two thoughts. ' +
   "Ask one question: did you do " +
@@ -54,7 +58,7 @@ export const LIVE_DECLARATION =
   `${NOTE_CREDIT} <what you did differently>\n` +
   "If no (you were already doing it, or it does not apply):\n" +
   `${NOTE_DISMISS} <what it said>; no change: <why>\n` +
-  "If it is wrong (its source does not say it, or it is outdated):\n" +
+  "If it is wrong (its source does not say it, or the code or a later decision contradicts it):\n" +
   `${NOTE_DISMISS} <what it said>; wrong: <why>`;
 
 /** Where the agent can read a note's source. Commit ids are this repo's own, so git can show them. */
