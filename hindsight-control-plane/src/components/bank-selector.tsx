@@ -1,6 +1,5 @@
 "use client";
 
-import { WrappedButton } from "./wrapped";
 import * as React from "react";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -93,6 +92,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { BANKS_PAGE_SIZE, type BankInfo } from "@/lib/bank-context";
+import { WrappedButton } from "./wrapped";
 
 function formatCompact(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;

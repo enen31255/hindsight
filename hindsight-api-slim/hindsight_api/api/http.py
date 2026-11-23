@@ -6238,6 +6238,8 @@ def _register_routes(app: FastAPI):
                 else None,
                 first_memory=SummaryMemory(text=first.text, time=first.time) if first else None,
             )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         except OperationValidationError as e:
             raise HTTPException(status_code=e.status_code, detail=e.reason)
         except (AuthenticationError, HTTPException):

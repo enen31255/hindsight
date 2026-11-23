@@ -230,9 +230,19 @@ class SummaryMemory:
 
 
 @dataclass(frozen=True)
-class StatsSummaryAggregates:
-    """What ``stats_summary`` adds up for a window, besides the per-hour counts."""
+class HourCount:
+    """Memories of one fact type in one UTC hour (``time`` is the hour's start, UTC)."""
 
+    time: datetime
+    fact_type: str
+    count: int
+
+
+@dataclass(frozen=True)
+class StatsSummaryAggregates:
+    """What ``stats_summary`` adds up for a window."""
+
+    hours: list[HourCount]
     documents: int
     harnesses: list[NameCount]
     entities: list[NameCount]
@@ -2508,9 +2518,8 @@ class MemoriesExtension(Extension, ABC):
         trunc: str,
         since: datetime,
         tag_groups: "list[TagGroup] | None" = None,
-        until: datetime | None = None,
     ) -> list[dict[str, Any]]:
-        """``[{"bucket": datetime, "fact_type": str, "count": int}]`` in ``[since, until)`` (open-ended without ``until``).
+        """``[{"bucket": datetime, "fact_type": str, "count": int}]`` since ``since``.
 
         Memories bucketed by ``time_field`` truncated to ``trunc`` (minute / hour /
         day) on UTC boundaries, broken down by fact_type — the caller fills the
@@ -2530,10 +2539,11 @@ class MemoriesExtension(Extension, ABC):
         entity_limit: int,
         tag_groups: "list[TagGroup] | None" = None,
     ) -> StatsSummaryAggregates:
-        """A bank's ``[start, end)`` summed up, besides the per-hour counts ``memories_timeseries`` gives.
+        """A bank's ``[start, end)`` summed up.
 
         Memories are placed on ``COALESCE(mentioned_at, created_at)``; documents on
-        ``created_at``. ``harnesses`` counts the window's documents per ``harness:<id>``
+        ``created_at``. ``hours`` counts memories per UTC hour and fact type (only hours
+        that have any). ``harnesses`` counts the window's documents per ``harness:<id>``
         tag, ``entities`` the window's memories per mentioned entity (top ``entity_limit``),
         ``strongest_observation`` is the one with the highest ``proof_count`` and
         ``first_memory`` the earliest memory. A store must aggregate in place: no memory
@@ -4727,6 +4737,7 @@ __all__ = [
     "build_fact_records",
     "build_text_signals",
     "source_key",
+    "HourCount",
     "NameCount",
     "StatsSummaryAggregates",
     "SummaryMemory",

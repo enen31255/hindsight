@@ -547,6 +547,8 @@ async def test_every_other_surface_respects_both_scopes(memory, scoped_bank):
     summary = await memory.get_stats_summary(scoped_bank, **window, request_context=dan)
     admin_summary = await memory.get_stats_summary(scoped_bank, **window, request_context=admin)
     assert summary.hours != admin_summary.hours, "Kate's private memories must not be counted for Dan"
+    # Documents go through their own scoped query: Dan sees his notes, not Kate's sync.
+    assert (summary.aggregates.documents, admin_summary.aggregates.documents) == (1, 2)
     assert "interviewing" not in str(summary)
 
     # Documents: a document Dan can read but not write; new tags must be writable too.

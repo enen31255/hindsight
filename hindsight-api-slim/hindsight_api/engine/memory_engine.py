@@ -17748,26 +17748,13 @@ class MemoryEngine(MemoryEngineInterface):
         tag_scope = await self._authorize_bank_read(bank_id, BankReadOperation.GET_STATS_SUMMARY, request_context)
         await self._require_bank_exists(bank_id)
         if end <= start:
-            raise OperationValidationError("end_date must be after start_date", status_code=400)
+            raise ValueError("end_date must be after start_date")
         if end - start > _STATS_SUMMARY_MAX_WINDOW:
-            raise OperationValidationError(
-                f"The window can span at most {_STATS_SUMMARY_MAX_WINDOW.days} days", status_code=400
-            )
+            raise ValueError(f"The window can span at most {_STATS_SUMMARY_MAX_WINDOW.days} days")
         from .memories import get_memories
 
-        store = get_memories()
         async with self._store_read_conn(bank_id) as conn:
-            rows = await store.memories_timeseries(
-                conn=conn,
-                fq_table=fq_table,
-                bank_id=bank_id,
-                time_field="mentioned_at",
-                trunc="hour",
-                since=start,
-                until=end,
-                tag_groups=tag_scope,
-            )
-            aggregates = await store.stats_summary(
+            aggregates = await get_memories().stats_summary(
                 conn=conn,
                 fq_table=fq_table,
                 bank_id=bank_id,
@@ -17778,16 +17765,16 @@ class MemoryEngine(MemoryEngineInterface):
             )
 
         hours: dict[datetime, MemoryTimeseriesBucketData] = {}
-        for row in rows:
-            bucket = row["bucket"]
-            bucket = bucket.replace(tzinfo=timezone.utc) if bucket.tzinfo is None else bucket.astimezone(timezone.utc)
+        for h in aggregates.hours:
+            # Both dialects hand back the UTC hour; one of them without a zone.
+            bucket = h.time.replace(tzinfo=timezone.utc) if h.time.tzinfo is None else h.time.astimezone(timezone.utc)
             entry = hours.setdefault(bucket, MemoryTimeseriesBucketData(time=bucket.isoformat()))
-            if row["fact_type"] == "world":
-                entry.world += row["count"]
-            elif row["fact_type"] == "experience":
-                entry.experience += row["count"]
-            elif row["fact_type"] == "observation":
-                entry.observation += row["count"]
+            if h.fact_type == "world":
+                entry.world += h.count
+            elif h.fact_type == "experience":
+                entry.experience += h.count
+            elif h.fact_type == "observation":
+                entry.observation += h.count
         return StatsSummaryData(
             bank_id=bank_id,
             start_date=start.isoformat(),

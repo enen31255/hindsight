@@ -578,7 +578,6 @@ class PostgresMemories(MemoriesExtension):
         trunc: str,
         since: datetime,
         tag_groups: list[TagGroup] | None = None,
-        until: datetime | None = None,
     ) -> list[dict[str, Any]]:
         return await counts.memories_timeseries(
             conn=conn,
@@ -588,7 +587,6 @@ class PostgresMemories(MemoriesExtension):
             trunc=trunc,
             since=since,
             tag_groups=tag_groups,
-            until=until,
         )
 
     async def stats_summary(

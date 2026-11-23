@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * Hindsight Wrapped 2026: a Spotify-style story of one bank's year, opened from
- * a button in the top bar. The story is the personal recap (it quotes
- * memories); its last slide offers a share image drawn on a canvas, with counts
- * only: no bank name, no entities, no memory text.
+ * Hindsight Wrapped 2026: a Spotify-style story of the year across every bank,
+ * opened from a button in the top bar. The story is the personal recap (it
+ * names banks and quotes memories); its last slide offers a share image drawn
+ * on a canvas, with counts only: no bank name, no entities, no memory text.
  *
- * The year is computed once per bank and kept in localStorage for good: a
- * Wrapped is a snapshot, not a live view.
+ * The year is summed up per bank by the server (`stats/summary`) and kept in
+ * localStorage per account: refreshed once a day while the year is running,
+ * kept for good once it is over.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -50,11 +51,22 @@ function accountStamp(banks: BankInfo[]): string | null {
   return oldest ? `${oldest.bank_id}:${oldest.created_at}` : null;
 }
 
+/** A cached year: `final` once it was computed after the year ended, else the day it was. */
+interface CachedYear {
+  stats: WrappedStats;
+  final: boolean;
+  day: string;
+}
+
+const today = () => new Date().toDateString();
+
 function readCache(stamp: string | null): WrappedStats | null {
   if (!stamp) return null;
   try {
     const raw = localStorage.getItem(cacheKey(stamp));
-    return raw ? (JSON.parse(raw) as WrappedStats) : null;
+    const cached = raw ? (JSON.parse(raw) as Partial<CachedYear>) : null;
+    // A year still running is refreshed daily, so December is not lost to a November visit.
+    return cached?.stats && (cached.final || cached.day === today()) ? cached.stats : null;
   } catch {
     return null;
   }
@@ -62,8 +74,13 @@ function readCache(stamp: string | null): WrappedStats | null {
 
 function writeCache(stamp: string | null, stats: WrappedStats) {
   if (!stamp) return;
+  const entry: CachedYear = {
+    stats,
+    final: Date.now() >= yearRange(YEAR).end.getTime(),
+    day: today(),
+  };
   try {
-    localStorage.setItem(cacheKey(stamp), JSON.stringify(stats));
+    localStorage.setItem(cacheKey(stamp), JSON.stringify(entry));
   } catch {
     // Storage full or blocked: the year is just read again next time.
   }
@@ -91,21 +108,23 @@ async function listAllBanks(): Promise<BankInfo[]> {
   }
 }
 
-async function loadWrapped(): Promise<WrappedStats> {
+/** The year, and whether every bank answered (a partial year is shown, never cached). */
+async function loadWrapped(): Promise<{ stats: WrappedStats; complete: boolean }> {
   const { start, end } = yearRange(YEAR);
   const startDate = start.toISOString();
   // A bank that never had a fact, or was last written before the year, has nothing to add.
   const banks = (await listAllBanks()).filter(
     (b) => b.fact_count > 0 && (!b.last_write_at || b.last_write_at >= startDate)
   );
-  const years = await inPool(
-    banks,
-    async (b): Promise<BankYear> => ({
-      name: b.display_alias ?? b.name ?? b.bank_id,
-      summary: await client.getStatsSummary(b.bank_id, startDate, end.toISOString()),
-    })
+  // One bank deleted meanwhile, or refused to this caller, must not blank the whole story.
+  const years = await inPool(banks, (b) =>
+    client
+      .getStatsSummary(b.bank_id, startDate, end.toISOString())
+      .then((summary): BankYear => ({ name: b.display_alias ?? b.name ?? b.bank_id, summary }))
+      .catch(() => null)
   );
-  return computeWrapped(YEAR, years);
+  const answered = years.filter((y): y is BankYear => y !== null);
+  return { stats: computeWrapped(YEAR, answered), complete: answered.length === years.length };
 }
 
 /** The Hindsight mark alone, cropped out of the full logo. */
@@ -142,14 +161,14 @@ export function WrappedButton() {
   const [error, setError] = useState(false);
   const [open, setOpen] = useState(false);
 
-  // Computed once, then kept: an empty year is not cached, so it fills in later.
+  // Computed in the background, then kept: an empty or partial year is not cached, so it fills in later.
   useEffect(() => {
     if (banksLoading || stats || !bankInfos.length) return;
     let cancelled = false;
     loadWrapped()
-      .then((s) => {
+      .then(({ stats: s, complete }) => {
         if (cancelled) return;
-        if (s.memories > 0) writeCache(stamp, s);
+        if (complete && s.memories > 0) writeCache(stamp, s);
         setComputed(s);
       })
       .catch(() => !cancelled && setError(true));
@@ -202,7 +221,7 @@ function Rise({
 // One type scale for every slide: a blue kicker, one hero (a number or a
 // title), a line of body. Left-aligned, flat, white on navy.
 const HERO =
-  "font-semibold tracking-[-0.04em] leading-[0.9] tabular-nums text-white text-[clamp(4.5rem,15vw,9.5rem)]";
+  "font-semibold tracking-[-0.04em] leading-[0.9] tabular-nums text-white text-[clamp(3.5rem,15vw,9.5rem)]";
 const TITLE = "text-3xl sm:text-5xl font-semibold tracking-tight text-white";
 const BODY = "text-lg text-white/60 leading-relaxed max-w-xl";
 

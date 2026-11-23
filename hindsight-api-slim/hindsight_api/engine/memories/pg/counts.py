@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Any
 
 from ...search.tags import TagClause, TagGroup, build_tag_groups_where_clause
-from ..base import NameCount, StatsSummaryAggregates, SummaryMemory
+from ..base import HourCount, NameCount, StatsSummaryAggregates, SummaryMemory
 
 
 async def consolidation_freshness(*, conn, fq_table: Callable[[str], str], bank_id: str) -> dict[str, Any]:
@@ -153,30 +153,26 @@ async def memories_timeseries(
     trunc: str,
     since: datetime,
     tag_groups: list[TagGroup] | None = None,
-    until: datetime | None = None,
 ) -> list[dict[str, Any]]:
-    """Memories bucketed by ``time_field`` (truncated to ``trunc``) and fact_type, in ``[since, until)``.
+    """Memories bucketed by ``time_field`` (truncated to ``trunc``) and fact_type.
 
     ``time_field`` is whitelisted by the caller before it reaches here — it is
     interpolated into SQL. Event-time fields fall back to ``created_at`` per row so
     rows without an event timestamp still appear.
     """
     bucket_expr = time_field if time_field == "created_at" else f"COALESCE({time_field}, created_at)"
-    # A bounded window (the stats summary of a past year) must not scan everything after it.
-    until_sql = f"AND {bucket_expr} < $3" if until else ""
-    groups = build_tag_groups_where_clause(tag_groups, 4 if until else 3)
+    groups = build_tag_groups_where_clause(tag_groups, 3)
     rows = await conn.fetch(
         f"""
         SELECT date_trunc('{trunc}', {bucket_expr} AT TIME ZONE 'UTC') AS bucket,
                fact_type, COUNT(*) AS count
         FROM {fq_table("memory_units")}
-        WHERE bank_id = $1 AND {bucket_expr} >= $2 {until_sql} {groups.sql}
+        WHERE bank_id = $1 AND {bucket_expr} >= $2 {groups.sql}
         GROUP BY bucket, fact_type
         ORDER BY bucket
         """,
         bank_id,
         since,
-        *([until] if until else []),
         *groups.params,
     )
     return [{"bucket": r["bucket"], "fact_type": r["fact_type"], "count": r["count"]} for r in rows]
@@ -195,78 +191,76 @@ async def stats_summary(
     """A bank's ``[start, end)`` summed up in the database: what a year-in-numbers view needs.
 
     Memories are placed on ``COALESCE(mentioned_at, created_at)``, like the event-time
-    timeseries. Returns ``documents`` (created in the window), ``harnesses`` (those
-    documents per ``harness:<id>`` tag), ``entities`` (the names most memories in the
-    window mention), ``strongest_observation`` (the observation backed by most facts) and
-    ``first_memory`` (the earliest memory); the per-hour counts come from
-    ``memories_timeseries``. Only aggregates and two rows cross the wire.
+    timeseries; documents on ``created_at``. Only aggregates and two rows cross the wire.
+
+    Every query reads the window from a subquery that applies the tag scope on the bare
+    ``tags`` column: the Oracle rewriter only translates the tag-group operators there
+    (an aliased ``mu.tags`` comes out as ``mu.EXISTS (...)``), the same constraint
+    ``_oracle_observation_scope_counts`` works around. The hour bucket and the documents'
+    tag expansion differ per dialect, so those two are written out for each; the
+    rewriter's ``date_trunc`` translation cannot take a ``COALESCE`` argument.
     """
-    from ...db import create_data_access_ops  # noqa: PLC0415
+    from ...schema import _is_oracle  # noqa: PLC0415
 
-    t = "COALESCE(mu.mentioned_at, mu.created_at)"
-    mu = f"{fq_table('memory_units')} mu"
-    groups = build_tag_groups_where_clause(tag_groups, 4, table_alias="mu.")
-    window = f"mu.bank_id = $1 AND {t} >= $2 AND {t} < $3 {groups.sql}"
+    oracle = _is_oracle()
+    groups = build_tag_groups_where_clause(tag_groups, 4)
     params = [bank_id, start, end, *groups.params]
-    limit_idx = groups.next_param_offset
+    t = "COALESCE(mentioned_at, created_at)"
+    window = f"""(
+        SELECT id, text, fact_type, proof_count, {t} AS ts
+        FROM {fq_table("memory_units")}
+        WHERE bank_id = $1 AND {t} >= $2 AND {t} < $3 {groups.sql}
+    ) mu"""
+    docs = f"""(
+        SELECT tags FROM {fq_table("documents")}
+        WHERE bank_id = $1 AND created_at >= $2 AND created_at < $3 {groups.sql}
+    ) d"""
 
+    bucket = "TRUNC(SYS_EXTRACT_UTC(mu.ts), 'HH24')" if oracle else "date_trunc('hour', mu.ts AT TIME ZONE 'UTC')"
+    hours = await conn.fetch(
+        f"SELECT {bucket} AS bucket, mu.fact_type AS fact_type, COUNT(*) AS n FROM {window} "
+        f"GROUP BY {bucket}, mu.fact_type ORDER BY bucket",
+        *params,
+    )
     entities = await conn.fetch(
         f"""
-        SELECT e.canonical_name AS name, COUNT(*) AS count
-        FROM {mu}
+        SELECT e.canonical_name AS name, COUNT(*) AS n
+        FROM {window}
         JOIN {fq_table("unit_entities")} ue ON ue.unit_id = mu.id
         JOIN {fq_table("entities")} e ON e.id = ue.entity_id
-        WHERE {window}
         GROUP BY e.canonical_name
-        ORDER BY count DESC, e.canonical_name
-        LIMIT ${limit_idx}
+        ORDER BY n DESC, e.canonical_name
+        LIMIT ${groups.next_param_offset}
         """,
         *params,
         entity_limit,
     )
+    # NULLS LAST: proof_count is nullable (DEFAULT 1, no NOT NULL), and NULL sorts first descending.
     strongest = await conn.fetchrow(
-        f"""
-        SELECT mu.text AS text, mu.proof_count AS proof_count, {t} AS ts
-        FROM {mu}
-        WHERE {window} AND mu.fact_type = 'observation'
-        ORDER BY mu.proof_count DESC, ts
-        LIMIT 1
-        """,
+        f"SELECT mu.text AS text, mu.proof_count AS proof_count, mu.ts AS ts FROM {window} "
+        "WHERE mu.fact_type = 'observation' ORDER BY mu.proof_count DESC NULLS LAST, mu.ts LIMIT 1",
         *params,
     )
-    first = await conn.fetchrow(
-        f"SELECT mu.text AS text, {t} AS ts FROM {mu} WHERE {window} ORDER BY ts LIMIT 1",
-        *params,
-    )
+    first = await conn.fetchrow(f"SELECT mu.text AS text, mu.ts AS ts FROM {window} ORDER BY mu.ts LIMIT 1", *params)
 
-    # Documents carry the same tags column, so the dialect's tag listing reads them too.
-    doc_table = fq_table("documents")
-    parts = create_data_access_ops(getattr(conn, "backend_type", "postgresql")).build_tag_listing_parts(doc_table)
-    p = parts.bank_prefix
-    doc_groups = build_tag_groups_where_clause(tag_groups, 4, table_alias=p)
-    doc_window = f"{p}bank_id = $1 AND {p}created_at >= $2 AND {p}created_at < $3 {doc_groups.sql}"
-    doc_params = [bank_id, start, end, *doc_groups.params]
-    alias = p.rstrip(".")
-    documents = await conn.fetchval(
-        f"SELECT COUNT(*) FROM {doc_table} {alias} WHERE {doc_window}",
-        *doc_params,
+    documents = await conn.fetchval(f"SELECT COUNT(*) FROM {docs}", *params)
+    tag_rows = (
+        f"{docs} CROSS APPLY JSON_TABLE(d.tags, '$[*]' COLUMNS (tag VARCHAR2(256) PATH '$')) jt"
+        if oracle
+        else f"{docs}, unnest(d.tags) AS jt(tag)"
     )
     harnesses = await conn.fetch(
-        f"""
-        SELECT {parts.tag_col} AS tag, COUNT(*) AS count
-        FROM {parts.tag_source}
-        WHERE {doc_window} {parts.non_empty_check} AND {parts.tag_col} LIKE 'harness:%'
-        GROUP BY {parts.tag_col}
-        ORDER BY count DESC
-        """,
-        *doc_params,
+        f"SELECT jt.tag AS tag, COUNT(*) AS n FROM {tag_rows} WHERE jt.tag LIKE 'harness:%' "
+        "GROUP BY jt.tag ORDER BY n DESC, jt.tag",
+        *params,
     )
     return StatsSummaryAggregates(
+        hours=[HourCount(time=r["bucket"], fact_type=r["fact_type"], count=int(r["n"])) for r in hours],
         documents=int(documents or 0),
-        harnesses=[NameCount(name=r["tag"][len("harness:") :], count=int(r["count"])) for r in harnesses],
-        entities=[NameCount(name=r["name"], count=int(r["count"])) for r in entities],
+        harnesses=[NameCount(name=r["tag"][len("harness:") :], count=int(r["n"])) for r in harnesses],
+        entities=[NameCount(name=r["name"], count=int(r["n"])) for r in entities],
         strongest_observation=SummaryMemory(
-            text=strongest["text"], time=strongest["ts"], proof_count=int(strongest["proof_count"])
+            text=strongest["text"], time=strongest["ts"], proof_count=int(strongest["proof_count"] or 1)
         )
         if strongest
         else None,
