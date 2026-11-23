@@ -168,3 +168,25 @@ async def test_a_users_next_request_is_no_correction():
         criteria="corrects is False or create is False: the reply is a new request, not a correction of the agent.",
         context="The user asked for a rename after the agent built the pages; the agent got nothing wrong.",
     )
+
+
+async def test_a_rule_question_asks_what_must_hold_not_how_the_code_works():
+    """sdebench dedupe-amended: "How are duplicates resolved?" came back as the buggy code's key."""
+    draft = await _draft(
+        note="Before you change crmsync/dedupe.py: duplicates key on (lowercased email, same calendar day); "
+        "on collision the most-filled record wins; on a tie the CRM-side record is kept.",
+        verdict="used",
+        reason="I keyed dedup on (lowercased email, calendar day) and kept the most-filled record, the CRM one "
+        "on a tie, instead of the old exact (email, updated) key.",
+        goal="Same contact shows up twice after a sync run; fix merge_records in crmsync/dedupe.py.",
+    )
+    await assert_meets_criteria(
+        response=f"create={draft.create}\nname: {draft.name}\nquestion: {draft.query}",
+        criteria=(
+            "Judge only the question, it is not meant to answer itself. "
+            "create is True. The question asks for the rule duplicates must follow in crmsync/dedupe.py (which "
+            "records count as the same contact, or which one must be kept), not how the code currently works "
+            "or is implemented."
+        ),
+        context="An agent used a note on the dedupe rule; the old code keyed on the exact (email, updated) pair.",
+    )

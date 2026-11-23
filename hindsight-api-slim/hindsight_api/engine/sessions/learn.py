@@ -92,13 +92,18 @@ VERDICT_GUIDE = {
 # investigate failures in <test>?" opened with "No, you should not" (2026-11-11). The note writer's
 # "from the agent's reason" is kept: said generically ("given above") it
 # brought back the run's own port (test_a_value_the_agent_chose_for_its_run_is_not_the_rule).
+# "Ask what must hold": reflect answers a how-does-it-work question from the code as it stands, bug
+# included. On sdebench dedupe-amended (2026-11-23) "How are duplicate contacts resolved in
+# crmsync/dedupe.py?" came back as "keys on (email, updated)", the very bug the task fixes, and three
+# later notes held it up as the rule.
 PAGE_FORMAT = """Propose the page, for agents in later sessions. The page is written from the project's
 memories by answering its question, and an agent about to change that component reads it:
 - name: a short title naming the component and the topic (at most 8 words).
 - query: the one question the page answers, about the standing rule <SOURCE> settles for any later
   change there. Name the exact file, component or setting from <SOURCE>. Ask for the rule, not about
   the task the agent did: "How must new panels be added to shell.tsx?", not "Were the panels merged
-  into one?". A value the agent picked only for its own run (a free port, a temp folder, a branch
+  into one?". Ask what must hold, not how the code works: "Which retries must worker.py
+  give up on?", not "How does worker.py retry?". A value the agent picked only for its own run (a free port, a temp folder, a branch
   name) is not the project's: ask about the condition ("Which port do tests use when the default 5556
   is taken?"), not that value. Ask an open question (what, how, which, why), never a yes/no or
   either/or one: the page answers it as asked. Never ask whether a check can be skipped or a failure
