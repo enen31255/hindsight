@@ -854,6 +854,39 @@ async def test_a_note_is_quoted_from_the_source_that_states_its_rule(memory, req
     assert src is not None and src.document_id == "doc-old" and src.quote.startswith("Each query creates")
 
 
+async def test_a_note_is_sourced_from_the_memory_that_states_it_not_the_first_used(
+    memory, request_context, monkeypatch
+):
+    """sdebench dedupe-amended: the first memory was about the module, so the rule was cited as its commit."""
+    units = {
+        "about": {"text": "merge_records concatenates disjoint lists.", "document_id": "git:abc"},
+        "rule": {
+            "text": "On a duplicate key the record with more non-empty fields is kept.",
+            "document_id": "chat:1",
+        },
+    }
+    docs = {
+        "git:abc": "feat: add crmsync module. merge_records concatenates disjoint lists of records.",
+        "chat:1": "Keep the record with more non-empty fields on a duplicate key, the CRM one on a tie.",
+    }
+
+    async def get_memory_unit(bank_id, memory_id, request_context):
+        return units.get(memory_id)
+
+    async def get_document(document_id, bank_id, request_context):
+        return {"original_text": docs[document_id]}
+
+    monkeypatch.setattr(memory, "get_memory_unit", get_memory_unit)
+    monkeypatch.setattr(memory, "get_document", get_document)
+    src = await memory.sessions._source_of(
+        _bank(),
+        ["about", "rule"],
+        "On a duplicate key, the record with more non-empty fields is kept.",
+        request_context,
+    )
+    assert src is not None and src.document_id == "chat:1"
+
+
 async def test_a_note_whose_memories_are_all_gone_is_judged_by_its_quoted_source(memory, request_context, monkeypatch):
     """The session's own save rewrote the note's only memory: its quote, the session's own, decides."""
     bank, s = _bank(), memory.sessions

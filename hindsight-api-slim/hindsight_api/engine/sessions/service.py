@@ -1516,7 +1516,20 @@ class SessionService:
         if not memory_ids:
             return None
         try:
-            memory = await self._engine.get_memory_unit(bank_id, memory_ids[0], request_context=rc)
+            # The memory whose words back the note best, not the first one used: on sdebench
+            # dedupe-amended (2026-11-23) the first was "merge_records concatenates disjoint lists", so a
+            # rule from a past chat was cited as the commit that added the module, and the agent called
+            # it wrong when that commit held no such rule.
+            used = [
+                m for m in [await self._engine.get_memory_unit(bank_id, i, request_context=rc) for i in memory_ids] if m
+            ]
+
+            def backing(m: dict[str, Any]) -> float:
+                score = W.quote_score(str(m.get("text") or ""), note)
+                return float("-inf") if score is None else score
+
+            # max keeps the first on a tie, so with no text to go on the first memory still decides.
+            memory = max(used, key=backing, default=None)
             sources = []
             # Up to 12 source memories, one per document: with 6 an observation's newest source (the
             # session's own document) could be left out, and the note was quoted from a source that
