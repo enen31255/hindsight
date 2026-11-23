@@ -958,6 +958,19 @@ async def test_a_rerun_of_the_same_request_inherits_what_earlier_runs_set_aside(
     )
     state = WatchState.model_validate(await _watch_state(memory, bank, "run2"))
     assert state.set_aside == ["The worktrees folder is outside the rules."]
+    # Runs that used a note set the other aside as already done: the next attempt still hears it.
+    async with backend.acquire() as conn:
+        await conn.execute(
+            "UPDATE sessions SET credit_count = 1 WHERE bank_id = $1 AND session_id IN ('run1', 'run2')",
+            bank,
+        )
+    await s.append(
+        bank,
+        "run2b",
+        _req({"id": "1", "role": "user", "text": job.format("20261031-050000.000")}, live=True, retain="off"),
+        request_context=request_context,
+    )
+    assert WatchState.model_validate(await _watch_state(memory, bank, "run2b")).set_aside == []
     await s.append(
         bank,
         "run3",

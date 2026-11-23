@@ -538,11 +538,16 @@ class SessionService:
                 # Take over what the last runs of the same request set aside, once. "Same" ignores
                 # numbers: each run's request names its own run folder (".../20261031-040756.139/"),
                 # and an exact match never hit a single earlier run.
+                # Only from runs that used none of their notes: a run that used memory set a note
+                # aside because it already did it, not because it does not apply. On sdebench seqledger
+                # (2026-11-23) one such "already done" muted all six right notes of the next attempt,
+                # though three earlier attempts had used that rule. What a run called wrong still carries.
                 if settings.live and not state.inherited and len(state.goal) >= INHERIT_MIN_GOAL_CHARS:
                     state.inherited = True
                     earlier = await conn.fetch(
                         f"""
-                        SELECT watch_state->'set_aside' AS set_aside, watch_state->'found_wrong' AS found_wrong
+                        SELECT watch_state->'set_aside' AS set_aside, watch_state->'found_wrong' AS found_wrong,
+                               credit_count
                         FROM {fq_table("sessions")}
                         WHERE bank_id = $1 AND session_id <> $2
                           AND regexp_replace(watch_state->>'goal', '[0-9]+', '#', 'g')
@@ -553,7 +558,9 @@ class SessionService:
                         session_id,
                         state.goal,
                     )
-                    taken = [t for r in earlier for t in (conn.parse_json(r["set_aside"]) or [])]
+                    taken = [
+                        t for r in earlier if not r["credit_count"] for t in (conn.parse_json(r["set_aside"]) or [])
+                    ]
                     state.set_aside = list(dict.fromkeys(state.set_aside + taken))[-W.SET_ASIDE_KEPT :]
                     wrong = [t for r in earlier for t in (conn.parse_json(r["found_wrong"]) or [])]
                     state.found_wrong = list(dict.fromkeys(state.found_wrong + wrong))[-W.SET_ASIDE_KEPT :]
