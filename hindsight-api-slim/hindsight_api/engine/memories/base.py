@@ -2487,6 +2487,29 @@ class MemoriesExtension(Extension, ABC):
         """
         raise NotImplementedError
 
+    async def stats_summary(
+        self,
+        *,
+        conn,
+        fq_table,
+        bank_id: str,
+        start: datetime,
+        end: datetime,
+        entity_limit: int,
+        tag_groups: "list[TagGroup] | None" = None,
+    ) -> dict[str, Any]:
+        """A bank's ``[start, end)`` summed up: what a year-in-numbers view needs.
+
+        ``{"documents": int, "harnesses": [{name, count}], "entities": [{name, count}],
+        "strongest": {text, proof_count, ts} | None, "first": {text, ts} | None}``.
+        Memories are placed on ``COALESCE(mentioned_at, created_at)``; documents on
+        ``created_at``. ``harnesses`` counts the window's documents per ``harness:<id>``
+        tag, ``entities`` the window's memories per mentioned entity (top ``entity_limit``),
+        ``strongest`` is the observation with the highest ``proof_count`` and ``first`` the
+        earliest memory. A store must aggregate in place: no memory list crosses the wire.
+        """
+        raise NotImplementedError
+
     async def observation_scope_counts(
         self,
         *,

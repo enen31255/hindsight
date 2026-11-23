@@ -17711,6 +17711,69 @@ class MemoryEngine(MemoryEngineInterface):
             "buckets": [b.as_dict() for b in buckets],
         }
 
+    async def get_stats_summary(
+        self,
+        bank_id: str,
+        *,
+        start: datetime,
+        end: datetime,
+        request_context: "RequestContext",
+        entity_limit: int = 50,
+    ) -> dict[str, Any]:
+        """A bank's ``[start, end)`` summed up in the database.
+
+        Per-hour counts by fact type on UTC hours (only hours that have memories, so a
+        client can place them in its own time zone), plus the store's aggregates: the
+        window's documents and their coding agents, the most mentioned entities, the
+        strongest observation and the first memory. Tag-scoped callers only see what
+        their scope admits.
+        """
+        await self._authenticate_tenant(request_context)
+        tag_scope = await self._authorize_bank_read(bank_id, BankReadOperation.GET_STATS_SUMMARY, request_context)
+        await self._require_bank_exists(bank_id)
+        if end <= start:
+            raise OperationValidationError("end_date must be after start_date", status_code=400)
+        from .memories import get_memories
+
+        store = get_memories()
+        async with self._store_read_conn(bank_id) as conn:
+            rows = await store.memories_timeseries(
+                conn=conn,
+                fq_table=fq_table,
+                bank_id=bank_id,
+                time_field="mentioned_at",
+                trunc="hour",
+                since=start,
+                tag_groups=tag_scope,
+            )
+            summary = await store.stats_summary(
+                conn=conn,
+                fq_table=fq_table,
+                bank_id=bank_id,
+                start=start,
+                end=end,
+                entity_limit=entity_limit,
+                tag_groups=tag_scope,
+            )
+
+        hours: dict[datetime, dict[str, Any]] = {}
+        for row in rows:
+            bucket = row["bucket"]
+            bucket = bucket.replace(tzinfo=timezone.utc) if bucket.tzinfo is None else bucket.astimezone(timezone.utc)
+            if bucket >= end or row["fact_type"] not in ("world", "experience", "observation"):
+                continue
+            entry = hours.setdefault(
+                bucket, {"time": bucket.isoformat(), "world": 0, "experience": 0, "observation": 0}
+            )
+            entry[row["fact_type"]] += row["count"]
+        return {
+            "bank_id": bank_id,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "hours": [hours[k] for k in sorted(hours)],
+            **summary,
+        }
+
     async def get_entity(
         self,
         bank_id: str,

@@ -9,6 +9,7 @@ showing him the shared rule.
 
 import ast
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -541,6 +542,11 @@ async def test_every_other_surface_respects_both_scopes(memory, scoped_bank):
     timeseries = await memory.get_memories_timeseries(scoped_bank, period="7d", request_context=dan)
     admin_series = await memory.get_memories_timeseries(scoped_bank, period="7d", request_context=admin)
     assert str(timeseries) != str(admin_series), "Kate's private memories must not be counted for Dan"
+    year = {"start": datetime(2000, 1, 1, tzinfo=timezone.utc), "end": datetime(2100, 1, 1, tzinfo=timezone.utc)}
+    summary = await memory.get_stats_summary(scoped_bank, **year, request_context=dan)
+    admin_summary = await memory.get_stats_summary(scoped_bank, **year, request_context=admin)
+    assert summary["hours"] != admin_summary["hours"], "Kate's private memories must not be counted for Dan"
+    assert "interviewing" not in str(summary)
 
     # Documents: a document Dan can read but not write; new tags must be writable too.
     with pytest.raises(OperationValidationError) as e:

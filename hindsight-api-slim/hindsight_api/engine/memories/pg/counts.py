@@ -177,6 +177,94 @@ async def memories_timeseries(
     return [{"bucket": r["bucket"], "fact_type": r["fact_type"], "count": r["count"]} for r in rows]
 
 
+async def stats_summary(
+    *,
+    conn,
+    fq_table: Callable[[str], str],
+    bank_id: str,
+    start: datetime,
+    end: datetime,
+    entity_limit: int,
+    tag_groups: list[TagGroup] | None = None,
+) -> dict[str, Any]:
+    """A bank's ``[start, end)`` summed up in the database: what a year-in-numbers view needs.
+
+    Memories are placed on ``COALESCE(mentioned_at, created_at)``, like the event-time
+    timeseries. Returns ``documents`` (created in the window), ``harnesses`` (those
+    documents per ``harness:<id>`` tag), ``entities`` (the names most memories in the
+    window mention), ``strongest`` (the observation backed by most facts) and
+    ``first`` (the earliest memory); the per-hour counts come from
+    ``memories_timeseries``. Only aggregates and two rows cross the wire.
+    """
+    from ...db import create_data_access_ops  # noqa: PLC0415
+
+    t = "COALESCE(mu.mentioned_at, mu.created_at)"
+    mu = f"{fq_table('memory_units')} mu"
+    groups = build_tag_groups_where_clause(tag_groups, 4, table_alias="mu.")
+    window = f"mu.bank_id = $1 AND {t} >= $2 AND {t} < $3 {groups.sql}"
+    params = [bank_id, start, end, *groups.params]
+    limit_idx = groups.next_param_offset
+
+    entities = await conn.fetch(
+        f"""
+        SELECT e.canonical_name AS name, COUNT(*) AS count
+        FROM {mu}
+        JOIN {fq_table("unit_entities")} ue ON ue.unit_id = mu.id
+        JOIN {fq_table("entities")} e ON e.id = ue.entity_id
+        WHERE {window}
+        GROUP BY e.canonical_name
+        ORDER BY count DESC, e.canonical_name
+        LIMIT ${limit_idx}
+        """,
+        *params,
+        entity_limit,
+    )
+    strongest = await conn.fetchrow(
+        f"""
+        SELECT mu.text AS text, mu.proof_count AS proof_count, {t} AS ts
+        FROM {mu}
+        WHERE {window} AND mu.fact_type = 'observation'
+        ORDER BY mu.proof_count DESC, ts
+        LIMIT 1
+        """,
+        *params,
+    )
+    first = await conn.fetchrow(
+        f"SELECT mu.text AS text, {t} AS ts FROM {mu} WHERE {window} ORDER BY ts LIMIT 1",
+        *params,
+    )
+
+    # Documents carry the same tags column, so the dialect's tag listing reads them too.
+    doc_table = fq_table("documents")
+    parts = create_data_access_ops(getattr(conn, "backend_type", "postgresql")).build_tag_listing_parts(doc_table)
+    p = parts.bank_prefix
+    doc_groups = build_tag_groups_where_clause(tag_groups, 4, table_alias=p)
+    doc_window = f"{p}bank_id = $1 AND {p}created_at >= $2 AND {p}created_at < $3 {doc_groups.sql}"
+    doc_params = [bank_id, start, end, *doc_groups.params]
+    alias = p.rstrip(".")
+    documents = await conn.fetchval(
+        f"SELECT COUNT(*) FROM {doc_table} {alias} WHERE {doc_window}",
+        *doc_params,
+    )
+    harnesses = await conn.fetch(
+        f"""
+        SELECT {parts.tag_col} AS tag, COUNT(*) AS count
+        FROM {parts.tag_source}
+        WHERE {doc_window} {parts.non_empty_check} AND {parts.tag_col} LIKE 'harness:%'
+        GROUP BY {parts.tag_col}
+        ORDER BY count DESC
+        """,
+        *doc_params,
+    )
+    return {
+        "documents": int(documents or 0),
+        "harnesses": [{"name": r["tag"][len("harness:") :], "count": int(r["count"])} for r in harnesses],
+        "entities": [{"name": r["name"], "count": int(r["count"])} for r in entities],
+        "strongest": dict(strongest) if strongest else None,
+        "first": dict(first) if first else None,
+    }
+
+
 async def observation_scope_counts(
     *,
     conn,
@@ -305,6 +393,7 @@ __all__ = [
     "document_memory_counts",
     "has_pending_consolidation",
     "link_counts",
+    "stats_summary",
     "memories_timeseries",
     "observation_scope_counts",
 ]

@@ -1,5 +1,6 @@
 "use client";
 
+import { WrappedButton } from "./wrapped";
 import * as React from "react";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -993,13 +994,17 @@ function BankSelectorInner({ kind = "memory", knowledgeBankId }: BankSelectorPro
         {/* Spacer */}
         <div className="hidden sm:block flex-1" />
 
+        <div className="ml-auto sm:ml-0">
+          <WrappedButton />
+        </div>
+
         {/* Phones: GitHub, theme, language and logout fold into one menu. */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden h-9 w-9 shrink-0 ml-auto"
+              className="md:hidden h-9 w-9 shrink-0"
               aria-label={tNav("more")}
               title={tNav("more")}
             >

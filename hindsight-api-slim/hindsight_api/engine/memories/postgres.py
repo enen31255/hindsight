@@ -588,6 +588,27 @@ class PostgresMemories(MemoriesExtension):
             tag_groups=tag_groups,
         )
 
+    async def stats_summary(
+        self,
+        *,
+        conn,
+        fq_table,
+        bank_id: str,
+        start: datetime,
+        end: datetime,
+        entity_limit: int,
+        tag_groups: list[TagGroup] | None = None,
+    ) -> dict[str, Any]:
+        return await counts.stats_summary(
+            conn=conn,
+            fq_table=fq_store_table,
+            bank_id=bank_id,
+            start=start,
+            end=end,
+            entity_limit=entity_limit,
+            tag_groups=tag_groups,
+        )
+
     async def observation_scope_counts(
         self,
         *,
