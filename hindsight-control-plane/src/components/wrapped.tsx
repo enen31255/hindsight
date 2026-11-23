@@ -124,6 +124,8 @@ async function loadWrapped(): Promise<{ stats: WrappedStats; complete: boolean }
       .catch(() => null)
   );
   const answered = years.filter((y): y is BankYear => y !== null);
+  // Every bank failing is the server failing, not an empty year: show the error, not "nothing this year".
+  if (years.length && !answered.length) throw new Error("No bank could be summed up");
   return { stats: computeWrapped(YEAR, answered), complete: answered.length === years.length };
 }
 
