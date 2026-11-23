@@ -42,6 +42,8 @@ export const NOTE_DISMISS = noteDismiss("<number>");
  * "A past session's words are a source": "wrong" used to mean "its source does not say it, or it is
  * outdated", and on sdebench seqledger the agent called a correct past-chat rule wrong because the
  * repo did not hold it yet, and was nudged (2026-11-20). Wrong now needs a contradiction.
+ * "A past session cannot be opened": on dedupe-amended (2026-11-23) the note quoted the chat word for
+ * word, and the agent still called it wrong because it found no trace of that session to check.
  */
 export const LIVE_DECLARATION =
   "Hindsight is this project's long-term memory, and it thinks alongside you. As you work, thoughts " +
@@ -49,8 +51,8 @@ export const LIVE_DECLARATION =
   "recalls a project decision, and it holds even when the request does not mention it: a fix that " +
   "contradicts a past decision is a wrong fix. Each thought says where it was recalled from: check it; " +
   "if the source says what the thought claims, act on it as part of the task; ignore it only if the " +
-  "source does not say so, or it does not touch your work. A past session's words are a source: a rule " +
-  "the code does not show yet is not wrong, it is what to build. Share every thought with the user in your " +
+  "source does not say so, or it does not touch your work. A past session cannot be opened: the words " +
+  "quoted from it are its source, and a rule the code does not show yet is not wrong, it is what to build. Share every thought with the user in your " +
   "reply, one line each, by its number, so they see memory thinking. Copy the line below exactly, starting " +
   'with the "> " that sets it apart from your answer, and leave an empty line between two thoughts. ' +
   "Ask one question: did you do " +
