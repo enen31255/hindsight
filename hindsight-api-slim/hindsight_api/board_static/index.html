@@ -586,13 +586,25 @@ function loadPageDetail(n){
   if(!n)return;
   var one=$('btn-export-one');
   one.style.display='inline-block';
-  one.href=base()+'/pages/tree/'+encodeURIComponent(n.id)+'/export';
+  one.setAttribute('data-pid',n.id);
+  one.textContent='⬇ 导出本页 .md';
+  one.onclick=function(ev){
+    ev.preventDefault();
+    var pid=one.getAttribute('data-pid');
+    jget(base()+'/pages/'+encodeURIComponent(pid)).then(function(d){
+      var md=(d&&(d.markdown||d.body))||'';
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([md],{type:'text/markdown'}));
+      a.download=(n.name||pid)+'.md';
+      document.body.appendChild(a);a.click();a.remove();
+    }).catch(function(){alert('导出失败')});
+  };
   $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧 · 刷新于 '+fmtDT(n.last_refreshed_at)+'</span>':'')+'</h3><div class="muted">加载正文…</div></div>';
-  jget(base()+'/pages/tree/'+encodeURIComponent(n.id)+'/export').then(function(d){
-    var md=(d&&(d.content||d.markdown))||(typeof d==='string'?d:JSON.stringify(d,null,1));
+  jget(base()+'/pages/'+encodeURIComponent(n.id)).then(function(d){
+    var md=(d&&(d.markdown||d.body))||(typeof d==='string'?d:JSON.stringify(d,null,1));
     $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧 · 刷新于 '+fmtDT(n.last_refreshed_at)+'</span>':'')+'</h3>'
       +'<div class="pagemd">'+esc(md)+'</div>'
-      +'<div class="epi">蒸馏页本质 = mental models；刷新计划 refresh_cron 随树返回。导出：<a href="'+one.href+'" style="color:var(--acc)">本页 .md</a></div></div>';
+      +'<div class="epi">蒸馏页本质 = mental models；刷新计划 refresh_cron 随树返回。导出：点左侧「⬇ 导出本页 .md」（浏览器端落盘）；全部页面走 <code>GET /pages/export</code></div></div>';
   }).catch(function(e){$('pageview').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
 }
 
