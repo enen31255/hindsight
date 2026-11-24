@@ -648,6 +648,17 @@ def _squash(s: str) -> str:
     return re.sub(r"\s+", "", s)
 
 
+def defends_removed_code(m: Moment, quote: str) -> bool:
+    """Whether a conflict's only evidence is the code the edit takes out: its quote is a line a commit
+    added, and the edit's diff removes that same line. That says the code was there, not that anyone
+    decided it. On sdebench (2026-11-24) such notes held up the regression's own line as "the recorded
+    implementation" (dedupe-amended) and "the latest decision" (parseflag), against the fix."""
+    if m.trigger != "edit" or not quote.startswith("+") or len(_squash(quote[1:])) < 8:
+        return False
+    removed = {_squash(ln[1:]) for ln in m.diff.splitlines() if ln.startswith("-") and not ln.startswith("---")}
+    return _squash(quote[1:]) in removed
+
+
 def accept_note(state: WatchState, m: Moment, text: str, memory_ids: list[str]) -> bool:
     """Whether a note reaches the agent, recording it when it does: never the same memory twice.
     A heads-up does not use its memory up: going against it later is still worth saying."""

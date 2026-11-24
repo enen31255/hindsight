@@ -1332,6 +1332,7 @@ class SessionService:
                 source.document_id if source and source.quote else None,
             )
         )
+        removed = bool(text) and not error and W.defends_removed_code(m, source.quote if source else "")
         elsewhere = (
             bool(text)
             and not error
@@ -1353,7 +1354,13 @@ class SessionService:
                 if row is None:
                     return
                 state = W.WatchState.model_validate(conn.parse_json(row["watch_state"]) or {})
-                spoke = not error and not own and not elsewhere and W.accept_note(state, m, text, memory_ids)
+                spoke = (
+                    not error
+                    and not own
+                    and not elsewhere
+                    and not removed
+                    and W.accept_note(state, m, text, memory_ids)
+                )
                 outcome = "error" if error else "note" if spoke else "repeat" if text else "silent"
                 check_seq = await self._log(
                     conn,
@@ -1375,6 +1382,7 @@ class SessionService:
                         llm_calls=calls,
                         **({"reason": "this session"} if own else {}),
                         **({"reason": "code the request is not about"} if elsewhere else {}),
+                        **({"reason": "only the code the edit removes"} if removed else {}),
                     ),
                 )
                 if spoke:

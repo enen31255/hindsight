@@ -746,3 +746,21 @@ def test_a_conflict_quoting_code_the_work_does_not_have_is_not_sent():
     assert not W.accept_note(W.WatchState(), stale, note, ["m1"])
     seen = W.Moment(trigger="edit", text="", recent=[], diff='+    key = (rec["email"],  rec["updated"])')
     assert W.accept_note(W.WatchState(), seen, note, ["m1"])
+
+
+def test_a_conflict_whose_only_evidence_is_the_line_the_edit_removes_is_dropped():
+    """sdebench parseflag (2026-11-24): the note quoted the regression commit's line as "the latest
+    decision", and the agent's fix was removing exactly that line."""
+    buggy = '+    return s.strip().lower() in ("true", "1", "yes", "on")'
+    fix = W.Moment(
+        trigger="edit",
+        text="",
+        recent=[],
+        diff='-    return s.strip().lower() in ("true", "1", "yes", "on")\n+    return s.strip() in ("true", "on")',
+    )
+    assert W.defends_removed_code(fix, buggy)
+    # The line still in the code, a quote that is not a code line, and a command are not this case.
+    keep = W.Moment(trigger="edit", text="", recent=[], diff="+    x = 1")
+    assert not W.defends_removed_code(keep, buggy)
+    assert not W.defends_removed_code(fix, "parse_flag accepts only true and on")
+    assert not W.defends_removed_code(fix.model_copy(update={"trigger": "command"}), buggy)
