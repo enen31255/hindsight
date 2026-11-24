@@ -1,423 +1,675 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hindsight 记忆看板</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>记忆 · Hindsight 看板</title>
 <style>
 :root{
-  --acc:#2E9B7B; --acc-deep:#1F6B54; --acc-dim:rgba(46,155,123,.16);
-  --bg:#16181d; --sunk:rgba(127,127,127,.08); --surface:rgba(255,255,255,.03);
-  --line:rgba(127,127,127,.26); --ink1:#eee; --ink2:#a9a9ad; --ink3:#7c7f86;
-  --ok:#2E9B7B; --warn:#F39C12; --err:#E74C3C; --info:#3498DB; --mut:#95A5A6;
-  --r1:8px; --r2:12px; --font:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
-  --mono:ui-monospace,Consolas,"Cascadia Code",monospace;
+  --acc:#2E9B7B; --acc-deep:#14493A;
+  --acc-line:rgba(46,155,123,.38); --acc-soft:rgba(46,155,123,.12);
+  --ink1:#eeeeee; --ink2:#a9a9ad; --ink3:rgba(169,169,173,.68);
+  --surface:rgba(255,255,255,.045); --sunk:rgba(127,127,127,.08);
+  --line:rgba(127,127,127,.26); --line-soft:rgba(127,127,127,.15);
+  --r1:8px; --r2:12px;
+  --p0:#E74C3C; --p1:#F39C12; --p2:#3498DB; --p3:#95A5A6;
+  --t-world:#3498DB; --t-exp:#2E9B7B; --t-obs:#8E7CC3;
+  --bg:#15171c; --panel:#191c22;
 }
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--bg);color:var(--ink1);font:14px/1.55 var(--font)}
-a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
-button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink1);border-radius:var(--r1);padding:5px 12px}
-button:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
-button:disabled{opacity:.45;cursor:not-allowed}
-button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
-button.primary:hover:not(:disabled){background:var(--acc-deep);color:#fff}
-select,input{font:inherit;background:var(--sunk);border:1px solid var(--line);color:var(--ink1);border-radius:var(--r1);padding:5px 10px;outline:none}
-select:focus,input:focus{border-color:var(--acc)}
-/* topbar */
-#top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:10px 18px;background:rgba(22,24,29,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
-#top .title{font-weight:600;font-size:15px;letter-spacing:.2px;white-space:nowrap}
-#top .title .accent{color:var(--acc)}
-.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:12px;border:1px solid var(--line);background:var(--surface);white-space:nowrap}
-.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--mut)}
-.pill.ok .dot{background:var(--ok)} .pill.ok{color:var(--ok);border-color:rgba(46,155,123,.4)}
-.pill.bad .dot{background:var(--err)} .pill.bad{color:var(--err);border-color:rgba(231,76,60,.4)}
-#top .spacer{flex:1}
-#top .meta{font-size:12px;color:var(--ink3);white-space:nowrap}
-label.switch{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);cursor:pointer;white-space:nowrap}
-/* offline banner */
-#banner{display:none;margin:10px 18px 0;padding:10px 14px;border:1px solid rgba(231,76,60,.5);background:rgba(231,76,60,.12);color:var(--err);border-radius:var(--r1);font-size:13px}
-#banner button{margin-left:10px}
-/* tabs */
-#nav{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid var(--line);overflow-x:auto}
-#nav button{border:none;background:none;color:var(--ink2);padding:8px 14px;border-radius:var(--r1) var(--r1) 0 0;font-size:13px;white-space:nowrap}
-#nav button:hover{color:var(--ink1)}
-#nav button.on{color:var(--acc);background:var(--acc-dim);font-weight:600}
-main{padding:16px 18px 8px;max-width:1280px;margin:0 auto}
-section.tab{display:none} section.tab.on{display:block}
-/* cards & grids */
-.grid{display:grid;gap:10px}
-.g-stats{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:12px 14px}
-.stat .v{font-size:22px;font-weight:600;font-family:var(--mono)}
-.stat .k{font-size:12px;color:var(--ink2);margin-top:2px}
-.stat.ok .v{color:var(--ok)} .stat.err .v{color:var(--err)} .stat.info .v{color:var(--info)}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px}
-.card h4{margin:0 0 6px;font-size:13px;color:var(--ink1)}
-.chip{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink2);margin:0 4px 4px 0;background:var(--sunk)}
-.chip.type-world{color:var(--info);border-color:rgba(52,152,219,.4)}
-.chip.type-experience{color:var(--ok);border-color:rgba(46,155,123,.4)}
-.chip.type-observation{color:var(--warn);border-color:rgba(243,156,18,.4)}
-.chip.stale{color:var(--warn);border-color:rgba(243,156,18,.4)}
-.chip.err{color:var(--err);border-color:rgba(231,76,60,.4)}
-.chip.ok{color:var(--ok);border-color:rgba(46,155,123,.4)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f1115;color:var(--ink1);font:14px/1.55 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:12px}
+/* ── 面板主体（布局同样式稿；生产版置于壳 iframe 内，无假侧栏/演示控制条） ── */
+.app{width:100%;height:calc(100vh - 24px);margin:0 auto;display:flex;flex-direction:column;border-radius:var(--r2);overflow:hidden;border:1px solid var(--line);background:var(--bg)}
+.panel{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--panel)}
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
+.topbar .title{font-size:16.5px;font-weight:600}
+.topbar .sub{font-size:12px;color:var(--ink2);font-weight:400;margin-left:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12px;background:var(--acc-soft);color:var(--acc);outline:1px solid var(--acc-line)}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 6px var(--acc)}
+.pill.bad{background:rgba(231,76,60,.12);color:var(--p0);outline:1px solid rgba(231,76,60,.4)}
+.pill.bad i{background:var(--p0);box-shadow:0 0 6px var(--p0)}
+.spacer{flex:1}
+.autoref{font-size:12.5px;color:var(--ink2);display:inline-flex;gap:6px;align-items:center}
+.autoref input{accent-color:var(--acc)}
+button.ghost{background:var(--surface);border:1px solid var(--line);color:var(--ink1);border-radius:var(--r1);padding:5px 12px;font-size:12.5px;cursor:pointer}
+button.ghost:hover{background:var(--sunk)}
+select.ghost{background:var(--surface);border:1px solid var(--line);color:var(--ink1);border-radius:var(--r1);padding:5px 12px;font-size:12.5px;cursor:pointer;max-width:230px}
+.upd{font-size:12px;color:var(--ink3)}
+.banner{margin:10px 18px 0;padding:9px 14px;border-radius:var(--r1);background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.35);color:#f3b0aa;font-size:12.5px}
+.body{display:flex;flex:1;min-height:0}
+/* 页签栏 */
+.tabs{width:132px;border-right:1px solid var(--line-soft);padding:10px 8px;display:flex;flex-direction:column;gap:2px}
+.tabs .tb{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r1);color:var(--ink2);font-size:13px;cursor:pointer;border:none;background:none;text-align:left}
+.tabs .tb svg{width:15px;height:15px;flex:none}
+.tabs .tb:hover{background:var(--surface);color:var(--ink1)}
+.tabs .tb.on{background:var(--acc-soft);color:var(--acc);font-weight:600}
+/* 内容区 */
+.content{flex:1;padding:16px 18px;overflow:auto}
+section{display:none}
+section.on{display:block}
+.card{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r2);padding:14px 16px;margin-bottom:12px}
+.card h3{font-size:13px;color:var(--ink2);font-weight:600;margin-bottom:10px;letter-spacing:.4px}
 .muted{color:var(--ink3);font-size:12px}
-.mono{font-family:var(--mono)}
-.pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:12px;color:var(--ink2);background:var(--sunk);border-radius:var(--r1);padding:8px 10px;max-height:340px;overflow:auto}
-.bar{height:10px;border-radius:5px;background:var(--sunk);overflow:hidden;position:relative}
-.bar>span{position:absolute;inset:0;background:var(--acc);transform-origin:left;transform:scaleX(0);transition:transform .4s}
-.tagbar{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12px}
-.tagbar .name{width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)}
-.tagbar .bar{flex:1}
-.tagbar .count{width:52px;text-align:right;font-family:var(--mono);color:var(--ink3)}
-/* filter bar */
-.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
-.filters input[type=search]{min-width:220px}
-.filters .grow{flex:1}
-/* bubbles */
-.bubble{border:1px solid var(--line);border-radius:var(--r2);padding:8px 12px;margin-bottom:8px;background:var(--surface);font-size:13px;white-space:pre-wrap;word-break:break-word}
-.bubble .who{font-size:11px;font-weight:600;margin-bottom:4px;color:var(--ink3)}
-.bubble.user{border-left:3px solid var(--info)} .bubble.user .who{color:var(--info)}
-.bubble.assistant{border-left:3px solid var(--acc)} .bubble.assistant .who{color:var(--acc)}
-.bubble.system{border-left:3px solid var(--mut);opacity:.85}
-/* pagination */
-.pager{display:flex;gap:8px;align-items:center;margin:12px 0;font-size:12px;color:var(--ink2)}
-/* page tree */
-.page-node{border:1px solid var(--line);border-radius:var(--r2);background:var(--surface);padding:10px 12px;margin-bottom:8px}
-.page-node h4{margin:0 0 4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.page-node .desc{color:var(--ink2);font-size:12px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.page-node .kids{margin:8px 0 0 18px}
-/* probe */
-.probe{display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r1);background:var(--surface)}
-.probe .dot{width:9px;height:9px;border-radius:50%;background:var(--ink3)}
-.probe.alive .dot{background:var(--ok)} .probe.alive{color:var(--ink1)}
-.probe.dead .dot{background:var(--err)} .probe.dead{color:var(--ink3)}
-.probe.checking .dot{background:var(--warn)}
-/* recall */
-#recall-results .card{border-left:3px solid var(--acc)}
-.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px;margin-right:8px}
+.epi{font-size:11.5px;color:var(--ink3);margin-top:10px;padding-top:8px;border-top:1px dashed var(--line-soft)}
+.epi code{font-size:11px;color:var(--ink2)}
+/* stats 8 格 */
+.grid8{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r1);padding:10px 14px}
+.stat .v{font-size:21px;font-weight:700;color:var(--ink1)}
+.stat .v.warn{color:var(--p1)}
+.stat .v.bad{color:var(--p0)}
+.stat .k{font-size:12px;color:var(--ink2);margin-top:1px}
+.stat .s{font-size:10.5px;color:var(--ink3)}
+/* 过滤条 */
+.filter{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;background:var(--sunk);padding:10px 12px;border-radius:var(--r1)}
+.filter select,.filter input{background:var(--panel);color:var(--ink1);border:1px solid var(--line);border-radius:var(--r1);padding:5px 9px;font-size:12.5px}
+.filter input{width:170px}
+.tagchip{display:inline-flex;align-items:center;gap:5px;background:var(--acc-soft);color:var(--acc);outline:1px solid var(--acc-line);border-radius:99px;padding:2px 9px;font-size:11.5px;cursor:pointer}
+.tagchip.plain{background:var(--sunk);color:var(--ink2);outline:1px solid var(--line-soft)}
+.tagchip b{opacity:.75;font-weight:400}
+/* 记忆卡 */
+.mem{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px}
+.mem .head{display:flex;gap:7px;align-items:center;margin-bottom:7px;flex-wrap:wrap}
+.mem .text{color:var(--ink1);font-size:13.5px;word-break:break-word}
+.mem .meta{margin-top:7px;font-size:11.5px;color:var(--ink3);display:flex;gap:10px;flex-wrap:wrap}
+.badge{font-size:10.5px;padding:1.5px 8px;border-radius:99px;outline:1px solid currentColor}
+.b-world{color:var(--t-world)} .b-exp{color:var(--t-exp)} .b-obs{color:var(--t-obs)}
+.b-valid{color:var(--acc)} .b-invalid{color:var(--p0)} .b-misc{color:var(--ink2)}
+.pager{display:flex;gap:6px;align-items:center;color:var(--ink2);font-size:12.5px;margin-top:10px;flex-wrap:wrap}
+.pager .pg{padding:3px 9px;border-radius:6px;border:1px solid var(--line-soft);cursor:pointer}
+.pager .pg.on{background:var(--acc-soft);color:var(--acc);outline:1px solid var(--acc-line)}
+/* 双栏（对话/页面） */
+.duo{display:flex;gap:12px}
+.duo .left{width:305px;flex:none;display:flex;flex-direction:column;gap:8px}
+.duo .right{flex:1;min-width:0}
+.doc{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r1);padding:10px 12px;cursor:pointer}
+.doc.on{outline:1px solid var(--acc-line);background:var(--acc-soft)}
+.doc .id{font-size:12px;color:var(--ink1);word-break:break-all}
+.doc .mt{margin-top:5px;font-size:11px;color:var(--ink3);display:flex;gap:8px;flex-wrap:wrap}
+.ph{border:1.5px dashed var(--line);border-radius:var(--r2);padding:18px;color:var(--ink3);font-size:12.5px;background:rgba(127,127,127,.04)}
+.pagemd{white-space:pre-wrap;word-break:break-word;font-size:12.5px;color:var(--ink1);max-height:560px;overflow:auto}
+.bubble{border-radius:var(--r1);padding:9px 12px;margin-bottom:8px;font-size:12.5px;word-break:break-word}
+.bubble.user{background:rgba(52,152,219,.12);outline:1px solid rgba(52,152,219,.3)}
+.bubble.assistant{background:var(--surface);outline:1px solid var(--line-soft)}
+.bubble.tool{background:rgba(149,165,166,.1);outline:1px dashed var(--line);color:var(--ink2);font-size:11.5px}
+.bubble .who{font-size:10.5px;color:var(--ink3);margin-bottom:3px}
+/* 页面树 */
+.tree{display:flex;flex-direction:column;gap:4px}
+.tree .node{padding:6px 10px;border-radius:var(--r1);font-size:12.5px;color:var(--ink1);cursor:pointer;display:flex;align-items:center;gap:7px}
+.tree .node:hover{background:var(--surface)}
+.tree .node.on{background:var(--acc-soft);color:var(--acc)}
+.stale{font-size:10px;padding:1px 7px;border-radius:99px;background:rgba(243,156,18,.15);color:var(--p1);outline:1px solid rgba(243,156,18,.4)}
+/* 召回 */
+.recall-box textarea{width:100%;background:var(--panel);color:var(--ink1);border:1px solid var(--line);border-radius:var(--r1);padding:9px 12px;font-size:13px;min-height:58px;resize:vertical}
+.recall-opts{display:flex;gap:16px;align-items:center;margin-top:10px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2)}
+.recall-opts label{display:inline-flex;gap:5px;align-items:center;cursor:pointer}
+.recall-opts input{accent-color:var(--acc)}
+.progress{display:flex;align-items:center;gap:10px;background:var(--acc-soft);outline:1px solid var(--acc-line);border-radius:var(--r1);padding:9px 13px;font-size:12.5px;color:var(--acc);margin-top:12px}
+.spin{width:14px;height:14px;border:2px solid var(--acc-line);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
-#footer{padding:14px 18px 20px;color:var(--ink3);font-size:11px;border-top:1px solid var(--line);margin-top:18px;display:flex;gap:14px;flex-wrap:wrap}
-.empty{padding:26px;text-align:center;color:var(--ink3);border:1px dashed var(--line);border-radius:var(--r2)}
-h3.sec{font-size:13px;color:var(--ink2);margin:18px 0 8px;font-weight:600;letter-spacing:.3px}
+.scorebar{height:5px;border-radius:3px;background:var(--sunk);overflow:hidden;width:150px}
+.scorebar i{display:block;height:100%;background:var(--acc)}
+.fold{color:var(--ink3);font-size:12px;cursor:pointer;margin-top:10px}
+.fold pre{display:none;margin-top:8px;white-space:pre-wrap;word-break:break-all;font-size:11px;color:var(--ink2);max-height:320px;overflow:auto;border:1px dashed var(--line);border-radius:var(--r1);padding:10px}
+.fold.open pre{display:block}
+/* 队列 */
+.qrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.qpill{background:var(--surface);outline:1px solid var(--line-soft);border-radius:99px;padding:4px 13px;font-size:12.5px;color:var(--ink2)}
+.qpill b{color:var(--ink1)}
+.qpill.bad b{color:var(--p0)}
+.opcard{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r1);padding:11px 13px;margin-bottom:9px}
+.opcard.failed{border-color:rgba(231,76,60,.35)}
+.opcard .l1{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px}
+.opcard .err{margin-top:7px;font-size:11.5px;color:#f3b0aa;background:rgba(231,76,60,.08);border-radius:6px;padding:7px 9px;word-break:break-all}
+.opcard .pr{margin-top:7px;display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--ink2)}
+.pbar{flex:1;height:6px;background:var(--sunk);border-radius:4px;overflow:hidden;min-width:80px}
+.pbar i{display:block;height:100%;background:var(--acc)}
+button.dis{opacity:.45;cursor:not-allowed}
+/* 探活卡 */
+.lan{display:flex;gap:10px;flex-wrap:wrap}
+.lan .svc{background:var(--surface);outline:1px solid var(--line-soft);border-radius:var(--r1);padding:9px 13px;font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:8px}
+.lan .dot{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 5px var(--acc)}
+.lan .dot.down{background:var(--p0);box-shadow:0 0 5px var(--p0)}
+/* 增长曲线/标签 */
+.legend{display:flex;gap:14px;font-size:11.5px;color:var(--ink2);margin-top:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+.trow{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:12px}
+.trow .tn{width:190px;color:var(--ink2);text-align:right;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow .bar{height:13px;border-radius:3px;background:var(--acc);opacity:.85}
+.trow .tc{color:var(--ink3);font-size:11.5px;width:52px}
+footer.foot{border-top:1px solid var(--line-soft);padding:10px 18px;font-size:11.5px;color:var(--ink3);line-height:1.7}
+footer.foot b{color:var(--ink2)}
 </style>
 </head>
 <body>
-<div id="top">
-  <span class="title">Hindsight <span class="accent">记忆看板</span></span>
-  <span class="pill" id="health-pill"><span class="dot"></span><span id="health-text">检测中…</span></span>
-  <select id="bank-select" title="记忆库" style="max-width:260px"></select>
-  <span class="spacer"></span>
-  <label class="switch"><input type="checkbox" id="auto-refresh"> 30s 自动刷新</label>
-  <span class="meta" id="updated-at"></span>
+
+<div class="app">
+  <div class="panel">
+    <header class="topbar">
+      <div class="title">记忆 <span class="sub">Hindsight · <span id="t-bank">bank …</span></span></div>
+      <span class="pill" id="hpill"><i></i>连接中…</span>
+      <div class="spacer"></div>
+      <select class="ghost" id="banksel"><option>⛁ 读取 banks…</option></select>
+      <label class="autoref"><input type="checkbox" id="autoref" checked> 30s 自动刷新</label>
+      <button class="ghost" id="btn-refresh">⟳ 刷新</button>
+      <span class="upd" id="upd">—</span>
+    </header>
+
+    <div class="banner" id="offbanner" hidden>
+      daemon 离线 —— 无法连接 127.0.0.1:8888；DSH hook 将在下次会话自动拉起，面板轮询恢复后自动解除。
+    </div>
+
+    <div class="body">
+      <nav class="tabs" id="tabs"></nav>
+      <main class="content">
+
+      <!-- ① 总览 -->
+      <section id="v-overview" class="on">
+        <div class="grid8">
+          <div class="stat"><div class="v" id="s-nodes">—</div><div class="k">记忆卡片</div><div class="s">total_nodes</div></div>
+          <div class="stat"><div class="v" id="s-docs">—</div><div class="k">原始文档</div><div class="s">total_documents</div></div>
+          <div class="stat"><div class="v" id="s-obs">—</div><div class="k">观察</div><div class="s">observation</div></div>
+          <div class="stat"><div class="v" id="s-exp">—</div><div class="k">经验类</div><div class="s">experience</div></div>
+          <div class="stat"><div class="v" id="s-pend">—</div><div class="k">待归纳</div><div class="s">pending_consolidation</div></div>
+          <div class="stat"><div class="v warn" id="s-failed">—</div><div class="k">失败操作</div><div class="s">failed_operations</div></div>
+          <div class="stat"><div class="v" id="s-proc">—</div><div class="k">处理中</div><div class="s">processing</div></div>
+          <div class="stat"><div class="v" style="font-size:15px;padding-top:4px" id="s-lastc">—</div><div class="k">最近归纳</div><div class="s">last_consolidated_at</div></div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h3>近 7 天记忆增长（按天 × 类型）</h3>
+          <div id="tschart"></div>
+          <div class="legend">
+            <span><i style="background:var(--t-world)"></i>world 世界事实</span>
+            <span><i style="background:var(--t-exp)"></i>experience 经验</span>
+            <span><i style="background:var(--t-obs)"></i>observation 观察</span>
+            <span class="muted" id="linklegend"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>标签分布 Top 10 <span class="muted" style="font-weight:400" id="tagtotal"></span></h3>
+          <div id="tagbars"></div>
+        </div>
+
+        <div class="card">
+          <h3>局域网服务探活 <span class="muted" style="font-weight:400">· 纯 HTTP no-cors 探测，不经 8899</span></h3>
+          <div class="lan" id="lan"></div>
+        </div>
+        <div class="epi">数据源：<code>GET /stats</code> · <code>GET /stats/memories-timeseries</code> · <code>GET /tags</code>（同源直取 :8888）</div>
+      </section>
+
+      <!-- ② 记忆卡片 -->
+      <section id="v-memories">
+        <div class="filter">
+          <select id="f-type"><option value="">类型：全部</option><option value="world">world</option><option value="experience">experience</option><option value="observation">observation</option></select>
+          <select id="f-state"><option value="">状态：全部</option><option value="valid">有效</option><option value="invalid">已失效</option></select>
+          <span id="f-tags"></span>
+          <select id="f-time"><option value="">时间：全部</option><option value="7">近 7 天</option><option value="30">近 30 天</option></select>
+          <input id="f-q" placeholder="关键词（q）…">
+          <button class="ghost" id="f-apply">应用过滤</button>
+        </div>
+        <div id="memlist"></div>
+        <div class="pager" id="mempager"></div>
+        <div class="epi">数据源：<code>GET /memories/list?type&state&tags&tags_match&q&time_field&start_date&end_date&limit&offset</code> — 服务端过滤（12 个参数），分页 20/页</div>
+      </section>
+
+      <!-- ③ 对话原文 -->
+      <section id="v-docs">
+        <div class="duo">
+          <div class="left">
+            <div class="filter" style="margin-bottom:0"><input id="f-docq" placeholder="按 id/关键词过滤（q）…" style="width:100%"><button class="ghost" id="f-docapply">过滤</button></div>
+            <div id="doclist"></div>
+            <div class="muted" style="padding:2px 4px">过滤：<code>GET /documents?q</code> · 点左侧任一条加载原文</div>
+          </div>
+          <div class="right" id="docview">
+            <div class="ph">← 选择左侧文档，加载 original_text（JSONL 按 role 着色气泡渲染，单条截 1200 字）</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ④ 知识页面 -->
+      <section id="v-pages">
+        <div class="duo">
+          <div class="left">
+            <div class="tree" id="pagetree"></div>
+            <a id="btn-export-all" class="ghost" style="display:inline-block;margin-top:10px;text-decoration:none" href="#">⬇ 导出全部页面（GET /pages/export）</a>
+            <a id="btn-export-one" class="ghost" style="display:none;margin-top:10px;text-decoration:none" href="#">⬇ 导出本页 .md</a>
+            <div class="muted" style="margin-top:8px;font-size:11.5px">GET /pages/tree · GET /pages/tree/{page_id}/export</div>
+          </div>
+          <div class="right" id="pageview">
+            <div class="ph">← 选择左侧页面加载正文（markdown 原文渲染；「陈旧」徽标 = is_stale + last_refreshed_at，为 P1 借鉴上游 control-plane staleness-badge 的新增信号）</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ⑤ 召回测试 -->
+      <section id="v-recall">
+        <div class="card recall-box">
+          <h3>召回测试（异步 · 不阻塞面板）</h3>
+          <textarea id="recall-q">多智能体统一记忆与编排 的当前结论是什么</textarea>
+          <div class="recall-opts">
+            <span>预算档：</span>
+            <label><input type="radio" name="rb" value="low" checked> low（实测可达 51.4s）</label>
+            <label><input type="radio" name="rb" value="mid"> mid</label>
+            <label><input type="radio" name="rb" value="high"> high</label>
+            <label><input type="checkbox" id="recall-trace" checked> trace 检索轨迹</label>
+            <span class="spacer"></span>
+            <button class="ghost" id="recall-go">▶ 执行召回</button>
+          </div>
+          <div class="progress" id="recall-prog" hidden><span class="spin"></span><span id="recall-progtext">召回执行中…</span></div>
+        </div>
+        <div class="card" id="recall-out" hidden>
+          <h3>结果</h3>
+          <div id="recall-list"></div>
+          <div class="fold" id="tracefold" hidden>▸ 检索轨迹（trace=true：展示召回步骤与每步数据源，借鉴 Zep 召回轨迹设计）<pre id="tracepre"></pre></div>
+          <div class="epi">数据源：<code>POST /memories/recall {query,budget,trace,prefer_observations}</code> · 无 limit 字段 · 非法 budget 422 → 前端档位写死枚举</div>
+        </div>
+      </section>
+
+      <!-- ⑥ 后台队列 -->
+      <section id="v-ops">
+        <div class="qrow">
+          <span class="qpill">✅ completed <b id="q-completed">—</b></span>
+          <span class="qpill bad">✖ failed <b id="q-failed">—</b></span>
+          <span class="qpill">⏳ pending <b id="q-pending">—</b></span>
+          <span class="qpill">⚙ processing <b id="q-processing">—</b></span>
+          <span class="qpill">总计 <b id="q-total">—</b></span>
+          <span class="spacer"></span>
+          <select class="ghost" id="ops-status"><option value="">按状态过滤（status 参数）</option><option value="failed">failed</option><option value="completed">completed</option><option value="pending">pending</option><option value="processing">processing</option></select>
+        </div>
+        <div id="opslist"></div>
+        <div class="epi">数据源：<code>GET /operations?status</code> · 结构化 progress:{stage,processed,total} 为新增展示（8899 只做状态计数），借鉴上游 bank-operations-view</div>
+      </section>
+
+      </main>
+    </div>
+
+    <footer class="foot">
+      <b>记忆看板 · hindsight fork board_static（分支 hindsight-board）</b> — 前端 = 本静态页（样式按 2026-11-24 界面样式稿 1:1 复刻，配色沿用 dsh-personal-workbench <code>--wb-*</code> 设计变量）；后端 = Hindsight daemon 127.0.0.1:8888（单库 · API 1.2.3）；数据全部同源 GET 直取，不经 8899、无代理层。写操作一律只读（方案 D2）。<br>
+      样式稿中「对话原文气泡、召回结果卡、探活圆点」的占位示意为实时数据渲染；其余布局/徽标/页签与样式稿一致。
+    </footer>
+  </div>
 </div>
-<div id="banner"></div>
-<div id="nav"></div>
-<main id="main"></main>
-<div id="footer">
-  <span id="f-version"></span><span>fork: enen31255/hindsight#hindsight-board</span>
-  <span>只读模式（写操作需拍板后启用）</span><span id="f-bank"></span>
-</div>
+
 <script>
-"use strict";
-/* ================= basics ================= */
-const $=(s,el)=> (el||document).querySelector(s);
-const esc=s=> String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fmtN=n=> n==null?"-":Number(n).toLocaleString("zh-CN");
-const fmtT=s=> { if(!s) return "-"; const d=new Date(s); return isNaN(d)?s:d.toLocaleString("zh-CN",{hour12:false}); };
-const fmtB=b=> b==null?"-":(b>1048576?(b/1048576).toFixed(1)+" MB":(b>1024?(b/1024).toFixed(1)+" KB":b+" B"));
-function toast(msg,bad){ const b=$("#banner"); b.style.display="block"; b.style.borderColor=bad?"rgba(231,76,60,.5)":"rgba(243,156,18,.5)"; b.style.color=bad?"var(--err)":"var(--warn)"; b.innerHTML=esc(msg)+' <button onclick="refresh()">重试</button>'; }
-function clearBanner(){ const b=$("#banner"); b.style.display="none"; b.innerHTML=""; }
+'use strict';
+/* ───────────── 基础工具 ───────────── */
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmt(n){return (typeof n==='number')?n.toLocaleString('en-US'):String(n==null?'—':n)}
+function fmtDT(iso){ if(!iso) return '—';
+  var d=new Date(iso); if(isNaN(d)) return esc(String(iso));
+  function p(x){return (x<10?'0':'')+x}
+  return (d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+function trunc(s,n){s=String(s==null?'':s);return s.length>n?s.slice(0,n)+'…':s}
+function jget(url,to){ var c=new AbortController(); var t=setTimeout(function(){c.abort()},to||10000);
+  return fetch(url,{signal:c.signal}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()},
+    function(e){clearTimeout(t);throw e});}
+function jpost(url,body,to){ var c=new AbortController(); var t=setTimeout(function(){c.abort()},to||150000);
+  return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:c.signal})
+    .then(function(r){clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()},function(e){clearTimeout(t);throw e});}
 
-const state={ banks:[], bankId:null, online:null, updated:null, autoTimer:null };
-async function apiGet(path,timeoutMs){
-  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(), timeoutMs||15000);
-  try{ const r=await fetch(path,{signal:ctl.signal}); if(!r.ok) throw new Error("HTTP "+r.status+" @ "+path); return await r.json(); }
-  finally{ clearTimeout(t); }
-}
-async function apiPost(path,body,timeoutMs){
-  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(), timeoutMs||30000);
-  try{ const r=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{}),signal:ctl.signal});
-       if(!r.ok) throw new Error("HTTP "+r.status+" @ "+path); return await r.json(); }
-  finally{ clearTimeout(t); }
-}
-const BANK_PATH=id=> "/v1/default/banks/"+id;
+var S={bank:null,banks:[],stats:null,timer:null,memPage:0,docList:[],pageSel:null,opsTimer:null};
 
-/* ================= health & banks ================= */
-async function loadHealth(){
-  try{ const h=await apiGet("/health",6000); state.online=(h&&h.status==="healthy");
-       $("#health-pill").className="pill "+(state.online?"ok":"bad");
-       $("#health-text").textContent=state.online?"healthy":"异常"; }
-  catch(e){ state.online=false; $("#health-pill").className="pill bad"; $("#health-text").textContent="离线";
-       toast("Hindsight API 离线（同源 127.0.0.1:"+location.port+"）——记忆守护进程未运行",true); return; }
-  if(state.online) clearBanner();
-}
-async function loadBanks(){
-  try{ const d=await apiGet("/v1/default/banks"); state.banks=(d&&d.banks)||[];
-       if(!state.bankId){ state.bankId=state.banks.length?state.banks[0].bank_id:null; }
-       const sel=$("#bank-select"); sel.innerHTML="";
-       for(const b of state.banks){ const o=document.createElement("option"); o.value=b.bank_id; o.textContent=b.bank_id; if(b.bank_id===state.bankId)o.selected=true; sel.appendChild(o); }
-       sel.style.display=state.banks.length>1?"":"none";
-       $("#f-bank").textContent=state.bankId?("bank: "+state.bankId):""; }
-  catch(e){ /* health already reported */ }
-}
-$("#bank-select").addEventListener("change",e=>{ state.bankId=e.target.value; $("#f-bank").textContent="bank: "+state.bankId; refresh(); });
-$("#auto-refresh").addEventListener("change",e=>{
-  if(state.autoTimer){clearInterval(state.autoTimer);state.autoTimer=null;}
-  if(e.target.checked){ state.autoTimer=setInterval(()=>refresh(),30000); }
-});
-
-/* ================= tabs ================= */
-const TABS=[
-  {id:"overview",label:"总览",render:renderOverview},
-  {id:"memories",label:"记忆卡片",render:renderMemories},
-  {id:"docs",label:"对话原文",render:renderDocs},
-  {id:"pages",label:"知识页面",render:renderPages},
-  {id:"recall",label:"召回测试",render:renderRecall},
-  {id:"queue",label:"后台队列",render:renderQueue},
-];
-let activeTab="overview";
-const nav=$("#nav"), main=$("#main");
-for(const t of TABS){ const b=document.createElement("button"); b.textContent=t.label; b.dataset.tab=t.id;
-  b.onclick=()=>{ activeTab=t.id; [...nav.children].forEach(x=>x.classList.toggle("on",x.dataset.tab===t.id));
-    [...main.children].forEach(x=>x.classList.toggle("on",x.id==="tab-"+t.id)); refresh(); };
-  nav.appendChild(b); main.appendChild(Object.assign(document.createElement("section"),{id:"tab-"+t.id,className:"tab"}));
-}
-async function refresh(){
-  await loadHealth();
-  if(state.online){ await loadBanks(); }
-  const t=TABS.find(x=>x.id===activeTab); const el=$("#tab-"+activeTab);
-  el.innerHTML='<div class="empty"><span class="spin"></span>加载中…</div>';
-  try{ if(!state.online){ el.innerHTML='<div class="empty">API 离线，无法加载「'+esc(t.label)+'」数据</div>'; }
-       else if(!state.bankId){ el.innerHTML='<div class="empty">没有可用的记忆库（bank）</div>'; }
-       else{ await t.render(el); } }
-  catch(e){ el.innerHTML='<div class="empty">加载失败：'+esc(e.message||e)+'</div>'; }
-  state.updated=new Date(); $("#updated-at").textContent="更新于 "+state.updated.toLocaleTimeString("zh-CN",{hour12:false});
-}
-
-/* ================= overview ================= */
-const LAN_SVC=[
-  {name:"LLM 提取 (Qwen3.6-35B)",port:11438},
-  {name:"SystemOne 决策",port:11440},
-  {name:"LAN 服务 A",port:11435},
-  {name:"LAN 服务 B",port:11439},
-  {name:"LAN 服务 C",port:9091},
-];
-async function probe(host,port){
-  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),3500);
-  try{ await fetch("http://"+host+":"+port+"/", {mode:"no-cors",signal:ctl.signal}); return true; }
-  catch(e){ return false; } finally{ clearTimeout(t); }
-}
-async function renderOverview(el){
-  const B=BANK_PATH(state.bankId);
-  const [stats,ts,tags,ver]=await Promise.all([
-    apiGet(B+"/stats"), apiGet(B+"/stats/memories-timeseries"),
-    apiGet(B+"/tags").catch(()=>({items:[]})), apiGet("/version").catch(()=>null),
-  ]);
-  if(ver&&ver.api_version) $("#f-version").textContent="api v"+ver.api_version;
-  const nft=stats.nodes_by_fact_type||{};
-  const ops=stats.operations_by_status||{};
-  const maxBucket=Math.max(1,...ts.buckets.map(b=>(b.world||0)+(b.experience||0)+(b.observation||0)));
-  // stacked bar svg
-  const W=760,H=180,pad=26,bw=(W-pad*2)/ts.buckets.length;
-  let svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto">';
-  ts.buckets.forEach((b,i)=>{
-    const x=pad+i*bw+4, w=bw-8; const wS=b.world||0,eS=b.experience||0,oS=b.observation||0;
-    const h1=H-pad-(wS/maxBucket)*(H-pad*2), h2=H-pad-((wS+eS)/maxBucket)*(H-pad*2), h3=H-pad-((wS+eS+oS)/maxBucket)*(H-pad*2);
-    const y0=H-pad;
-    svg+='<rect x="'+x+'" y="'+h3+'" width="'+w+'" height="'+(y0-h3)+'" fill="#F39C12" opacity=".85"/>';
-    svg+='<rect x="'+x+'" y="'+h2+'" width="'+w+'" height="'+(h3-h2)+'" fill="#2E9B7B" opacity=".9"/>';
-    svg+='<rect x="'+x+'" y="'+h1+'" width="'+w+'" height="'+(h2-h1)+'" fill="#3498DB" opacity=".9"/>';
-    svg+='<text x="'+(x+w/2)+'" y="'+(H-8)+'" text-anchor="middle" font-size="10" fill="#7c7f86">'+esc(String(b.time).slice(5,10))+'</text>';
+/* ───────────── 页签 ───────────── */
+var TABS=[['v-overview','总览','<rect x="2.5" y="2.5" width="4.6" height="4.6" rx="1"/><rect x="8.9" y="2.5" width="4.6" height="4.6" rx="1"/><rect x="2.5" y="8.9" width="4.6" height="4.6" rx="1"/><rect x="8.9" y="8.9" width="4.6" height="4.6" rx="1"/>'],
+['v-memories','记忆卡片','<path d="M8 2.4 13.6 5.2 8 8 2.4 5.2z"/><path d="M2.4 8 8 10.8 13.6 8M2.4 10.8 8 13.6l5.6-2.8"/>'],
+['v-docs','对话原文','<path d="M3 4.5A1.5 1.5 0 0 1 4.5 3h7A1.5 1.5 0 0 1 13 4.5v5A1.5 1.5 0 0 1 11.5 11H8l-3.5 3v-3h-.5A1.5 1.5 0 0 1 3 9.5z"/>'],
+['v-pages','知识页面','<path d="M4 2.5h6.5L13 5v8.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"/><path d="M5.5 7.5h5M5.5 10h5"/>'],
+['v-recall','召回测试','<circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/>'],
+['v-ops','后台队列','<path d="M2 8.5h3l1.5-4 2.5 8 1.5-5.5 1 1.5H14"/>']];
+(function(){
+  var nav=$('tabs');
+  TABS.forEach(function(t,i){
+    var b=document.createElement('button');b.className='tb'+(i===0?' on':'');
+    b.innerHTML='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">'+t[2]+'</svg>'+t[1];
+    b.onclick=function(){switchTab(t[0])};nav.appendChild(b);
   });
-  svg+='</svg>';
-  const top=(tags.items||[]).slice(0,10); const maxTag=Math.max(1,...top.map(t=>t.count));
-  const alive=await Promise.all(LAN_SVC.map(s=>probe("192.168.1.14",s.port)));
-  el.innerHTML=
-    '<div class="grid g-stats">'
-    + stat(fmtN(stats.total_nodes),"记忆节点总数","ok") + stat(fmtN(stats.total_links),"链接总数")
-    + stat(fmtN(stats.total_documents),"文档") + stat(fmtN(stats.total_observations),"观察 observations","info")
-    + stat(fmtN(nft.world),"world 事实") + stat(fmtN(nft.experience),"experience 事实") + stat(fmtN(nft.observation),"observation 事实")
-    + stat(fmtN(ops.completed),"队列 completed","ok") + stat(fmtN(ops.processing),"队列 processing","info") + stat(fmtN(ops.failed||stats.failed_operations),"队列 failed","err")
-    + stat(fmtN(stats.pending_consolidation),"待归纳") + '</div>'
-    + '<h3 class="sec">近 ' + esc(ts.period||"7d") +' 记忆增长（世界/经验/观察）</h3><div class="card">'+svg
-    + '<div class="muted" style="margin-top:6px"><span class="chip type-world">world</span><span class="chip type-experience">experience</span><span class="chip type-observation">observation</span></div></div>'
-    + '<h3 class="sec">标签 Top ' + top.length + ' / 共 '+fmtN((tags.items||[]).length)+'</h3><div class="card">'
-    + top.map(t=>'<div class="tagbar"><span class="name" title="'+esc(t.tag)+'">'+esc(t.tag)+'</span><span class="bar"><span style="transform:scaleX('+(t.count/maxTag)+')"></span></span><span class="count">'+fmtN(t.count)+'</span></div>').join("")
-    + '</div>'
-    + '<h3 class="sec">局域网服务探活（192.168.1.14）</h3><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">'
-    + LAN_SVC.map((s,i)=>'<div class="probe '+(alive[i]?"alive":"dead")+'"><span class="dot"></span>'+esc(s.name)+' <span class="muted mono">:'+s.port+'</span></div>').join("")
-    + '</div>';
-  requestAnimationFrame(()=>[...el.querySelectorAll(".bar>span")].forEach(s=>{const m=/scaleX\(([\d.]+)\)/.exec(s.getAttribute("style"));if(m)s.style.transform="scaleX("+m[1]+")";}));
-}
-function stat(v,k,cls){ return '<div class="stat'+(cls?" "+cls:"")+'"><div class="v">'+v+'</div><div class="k">'+esc(k)+'</div></div>'; }
-
-/* ================= memories ================= */
-const memState={offset:0,limit:10,type:"",q:"",tags:""};
-async function renderMemories(el){
-  const B=BANK_PATH(state.bankId);
-  el.innerHTML='<div class="filters">'
-    +'<select id="m-type"><option value="">全部类型</option><option value="world">world</option><option value="experience">experience</option><option value="observation">observation</option></select>'
-    +'<input id="m-tags" type="search" placeholder="标签过滤（逗号分隔，如 origin:hermes-agent,kind:pdca）" style="min-width:250px">'
-    +'<input id="m-q" type="search" placeholder="全文搜索 q…"><button class="primary" id="m-go">查询</button><span class="grow"></span>'
-    +'<span class="muted" id="m-total"></span></div><div id="m-list"></div><div class="pager">'
-    +'<button id="m-prev">上一页</button><span id="m-page"></span><button id="m-next">下一页</button></div>';
-  $("#m-type").value=memState.type; $("#m-q").value=memState.q; $("#m-tags").value=memState.tags;
-  await loadMemPage(el);
-  $("#m-go").onclick=()=>{ memState.type=$("#m-type").value; memState.q=$("#m-q").value.trim(); memState.tags=$("#m-tags").value.trim(); memState.offset=0; loadMemPage(el); };
-  $("#m-q").addEventListener("keydown",e=>{if(e.key==="Enter")$("#m-go").click();});
-  $("#m-prev").onclick=()=>{ memState.offset=Math.max(0,memState.offset-memState.limit); loadMemPage(el); };
-  $("#m-next").onclick=()=>{ memState.offset+=memState.limit; loadMemPage(el); };
-}
-async function loadMemPage(el){
-  const B=BANK_PATH(state.bankId);
-  const p=new URLSearchParams({limit:memState.limit,offset:memState.offset});
-  if(memState.type)p.set("type",memState.type); if(memState.q)p.set("q",memState.q);
-  if(memState.tags){ p.set("tags",memState.tags); p.set("tags_match","any"); }
-  const d=await apiGet(B+"/memories/list?"+p);
-  $("#m-total",el).textContent="共 "+fmtN(d.total)+" 条";
-  const items=d.items||[];
-  $("#m-list",el).innerHTML= items.length? items.map(m=>
-    '<div class="card"><h4>'+esc(m.text)+'</h4>'
-    +'<div><span class="chip type-'+esc(m.fact_type)+'">'+esc(m.fact_type)+'</span>'
-    +(m.state&&m.state!=="valid"?'<span class="chip err">'+esc(m.state)+'</span>':'')
-    +(m.tags||[]).map(t=>'<span class="chip">'+esc(t)+'</span>').join("")
-    +'</div><div class="muted" style="margin-top:6px">'+fmtT(m.date)
-    +(m.metadata&&m.metadata.repo?' · repo: '+esc(m.metadata.repo):'')
-    +(m.metadata&&m.metadata.session_id?' · '+esc(m.metadata.session_id):'')
-    +' · proofs '+fmtN(m.proof_count)+(m.consolidated_at?' · 归纳于 '+fmtT(m.consolidated_at):'')+'</div></div>'
-  ).join("") : '<div class="empty">没有匹配的记忆</div>';
-  $("#m-page",el).textContent="第 "+(memState.offset/memState.limit+1)+" 页";
-  $("#m-prev",el).disabled=memState.offset===0;
-  $("#m-next",el).disabled=memState.offset+memState.limit>=(d.total||0);
+})();
+function switchTab(id){
+  document.querySelectorAll('section').forEach(function(s){s.classList.toggle('on',s.id===id)});
+  document.querySelectorAll('.tabs .tb').forEach(function(b,i){b.classList.toggle('on',TABS[i][0]===id)});
+  if(id==='v-memories'&&!$('memlist').childElementCount)loadMemories(0);
+  if(id==='v-docs'&&!$('doclist').childElementCount)loadDocs();
+  if(id==='v-pages'&&!$('pagetree').childElementCount)loadPages();
+  if(id==='v-ops'&&!$('opslist').childElementCount)loadOps();
 }
 
-/* ================= documents ================= */
-const docState={offset:0,limit:10,open:null};
-async function renderDocs(el){
-  const B=BANK_PATH(state.bankId);
-  el.innerHTML='<div class="filters"><span class="muted">会话/文档原文（strategy 标注来源）</span><span class="grow"></span><span class="muted" id="d-total"></span></div>'
-    +'<div id="d-list"></div><div class="pager"><button id="d-prev">上一页</button><span id="d-page"></span><button id="d-next">下一页</button></div>'
-    +'<div id="d-detail"></div>';
-  await loadDocPage(el);
-  $("#d-prev",el).onclick=()=>{ docState.offset=Math.max(0,docState.offset-docState.limit); loadDocPage(el); };
-  $("#d-next",el).onclick=()=>{ docState.offset+=docState.limit; loadDocPage(el); };
-}
-async function loadDocPage(el){
-  const B=BANK_PATH(state.bankId);
-  const d=await apiGet(B+"/documents?"+new URLSearchParams({limit:docState.limit,offset:docState.offset}));
-  $("#d-total",el).textContent="共 "+fmtN(d.total)+" 份";
-  $("#d-list",el).innerHTML=(d.items||[]).map(doc=>
-    '<div class="card"><h4>'+esc(doc.id)+'</h4>'
-    +'<div>'+(doc.retain_params&&doc.retain_params.strategy?'<span class="chip type-experience">'+esc(doc.retain_params.strategy)+'</span>':'')
-    +(doc.tags||[]).map(t=>'<span class="chip">'+esc(t)+'</span>').join("")+'</div>'
-    +'<div class="muted" style="margin-top:6px">'+fmtT(doc.created_at)+' · '+fmtB(doc.text_length)+' · '+fmtN(doc.memory_unit_count)+' 条记忆'
-    +(doc.document_metadata&&doc.document_metadata.repo?' · repo: '+esc(doc.document_metadata.repo):'')
-    +(doc.document_metadata&&doc.document_metadata.session_id?' · '+esc(doc.document_metadata.session_id):'')+'</div>'
-    +'<div style="margin-top:8px"><button data-doc="'+esc(doc.id)+'">查看原文</button></div></div>'
-  ).join("")||'<div class="empty">没有文档</div>';
-  $("#d-page",el).textContent="第 "+(docState.offset/docState.limit+1)+" 页";
-  $("#d-prev",el).disabled=docState.offset===0;
-  $("#d-next",el).disabled=docState.offset+docState.limit>=(d.total||0);
-  [...el.querySelectorAll("button[data-doc]")].forEach(b=>b.onclick=()=>openDoc(el,b.dataset.doc));
-}
-async function openDoc(el,id){
-  const B=BANK_PATH(state.bankId);
-  const box=$("#d-detail",el); box.innerHTML='<div class="card"><span class="spin"></span>加载原文 '+esc(id)+' …</div>';
-  try{
-    const d=await apiGet(B+"/documents/"+encodeURIComponent(id));
-    const raw=(d.original_text||"").trim();
-    let html="";
-    if(raw){ const lines=raw.split(/\n+/); const bubbles=[];
-      for(const ln of lines){ let o=null; try{o=JSON.parse(ln);}catch(_){/*not jsonl*/}
-        if(o&&o.role&&o.content!=null){ bubbles.push('<div class="bubble '+esc(o.role)+'"><div class="who">'+esc(o.role)+(o.timestamp?" · "+esc(o.timestamp):"")+'</div>'+esc(o.content)+'</div>'); }
-        else if(ln.trim()){ bubbles.push('<div class="bubble"><div class="who">raw</div>'+esc(ln)+'</div>'); } }
-      html=bubbles.join("");
-    } else html='<div class="empty">无 original_text</div>';
-    box.innerHTML='<h3 class="sec">原文 · '+esc(id)+'（'+fmtB(d.original_text?d.original_text.length:0)+'）</h3><div class="pre" style="max-height:520px">'+html+'</div>';
-  }catch(e){ box.innerHTML='<div class="empty">原文加载失败：'+esc(e.message||e)+'</div>'; }
+/* ───────────── 离线态 ───────────── */
+function setOffline(on,msg){
+  $('offbanner').hidden=!on;
+  var p=$('hpill');
+  p.classList.toggle('bad',on);
+  p.innerHTML='<i></i>'+(on?esc(msg||'503 · ECONNREFUSED'):'healthy');
 }
 
-/* ================= pages ================= */
-async function renderPages(el){
-  const B=BANK_PATH(state.bankId);
-  el.innerHTML='<div class="filters"><span class="muted">知识页面（自动归纳的 mental model 页，tier: knowledge:*）</span><span class="grow"></span>'
-    +'<a href="'+B+'/pages/export" download><button>导出全部 Markdown</button></a></div><div id="p-tree"><div class="empty"><span class="spin"></span>加载中…</div></div>';
-  const d=await apiGet(B+"/pages/tree");
-  const roots=d.roots||[];
-  const renderNode=(n,depth)=>{
-    const kids=(n.children||[]).map(c=>renderNode(c,depth+1)).join("");
-    return '<div class="page-node" style="'+(depth?'margin-left:0':'')+'"><h4>'+esc(n.name)
-      +(n.is_stale?'<span class="chip stale">stale 待刷新</span>':'<span class="chip ok">fresh</span>')
-      +(n.managed?'<span class="chip">managed</span>':'')
-      +'<a href="'+B+'/pages/tree/'+encodeURIComponent(n.id)+'/export" download style="margin-left:auto;font-size:12px">导出本页</a></h4>'
-      +(n.description?'<div class="desc" title="'+esc(n.description)+'">'+esc(n.description)+'</div>':'')
-      +'<div class="muted" style="margin-top:4px">'+fmtT(n.timestamp)+(n.tags&&n.tags.length?' · '+n.tags.map(t=>esc(t)).join(" · "):'')+'</div>'
-      +(kids?'<div class="kids">'+kids+'</div>':'')+'</div>';
-  };
-  $("#p-tree",el).innerHTML= roots.length? roots.map(n=>renderNode(n,0)).join("") : '<div class="empty">没有知识页面</div>';
+/* ───────────── banks/健康/总览 ───────────── */
+function base(){return '/v1/default/banks/'+encodeURIComponent(S.bank)}
+function loadBanks(){
+  return jget('/v1/default/banks').then(function(d){
+    S.banks=(d&&d.banks)||[];
+    var sel=$('banksel');sel.innerHTML='';
+    S.banks.forEach(function(b){
+      var o=document.createElement('option');o.value=b.bank_id;
+      o.textContent='⛁ '+b.bank_id+(S.banks.length>1?'（'+(b.name||'')+'）':'（唯一 bank）');
+      sel.appendChild(o);
+    });
+    if(!S.bank&&S.banks.length)S.bank=S.banks[0].bank_id;
+    if(S.bank)sel.value=S.bank;
+    $('t-bank').textContent='bank '+(S.bank||'—');
+    sel.onchange=function(){S.bank=sel.value;S.memPage=0;$('memlist').innerHTML='';$('doclist').innerHTML='';$('docview').innerHTML='<div class="ph">← 选择左侧文档…</div>';$('pagetree').innerHTML='';$('pageview').innerHTML='<div class="ph">← 选择左侧页面…</div>';$('opslist').innerHTML='';$('t-bank').textContent='bank '+S.bank;boot(true)};
+  });
+}
+function loadVitals(){
+  var b=base();
+  return jget('/health',6000).then(function(h){
+    setOffline(false);
+    $('hpill').innerHTML='<i></i>'+esc((h.status||'healthy')+' · db '+(h.db_acquire_ms!=null?h.db_acquire_ms:'—')+'ms · 池 '+(h.db_pool_in_use!=null?h.db_pool_in_use:'—')+'/'+(h.db_pool_max!=null?h.db_pool_max:'—'));
+  },function(e){ setOffline(true,'503 · '+(e&&e.name==='AbortError'?'timeout':'ECONNREFUSED')); return null; })
+  .then(function(){
+    if(!S.bank)return;
+    return jget(b+'/stats').then(function(st){
+      S.stats=st;
+      $('s-nodes').textContent=fmt(st.total_nodes);
+      $('s-docs').textContent=fmt(st.total_documents);
+      var ft=st.nodes_by_fact_type||{};
+      $('s-obs').textContent=fmt(ft.observation);
+      $('s-exp').textContent=fmt(ft.experience);
+      $('s-pend').textContent=fmt(st.pending_consolidation);
+      $('s-failed').textContent=fmt(st.failed_operations);
+      var ob=st.operations_by_status||{};
+      $('s-proc').textContent=fmt(ob.processing||0);
+      $('s-lastc').textContent=st.last_consolidated_at?fmtDT(st.last_consolidated_at):'—';
+      var lt=st.links_by_link_type||{};
+      var parts=[];
+      ['entity','semantic','temporal','caused_by'].forEach(function(k){ if(lt[k]!=null)parts.push(k+' '+fmt(lt[k])) });
+      $('linklegend').textContent='关联边 '+fmt(st.total_links)+(parts.length?' · '+parts.join(' / '):'');
+      // 队列 pills
+      $('q-completed').textContent=fmt(ob.completed||0);
+      $('q-failed').textContent=fmt(ob.failed||0);
+      $('q-pending').textContent=fmt(st.pending_operations||0);
+      $('q-processing').textContent=fmt(ob.processing||0);
+      $('q-total').textContent=fmt((ob.completed||0)+(ob.failed||0)+(ob.processing||0)+(st.pending_operations||0));
+    }).catch(function(){});
+  }).then(function(){
+    return jget(b+'/stats/memories-timeseries').then(function(ts){renderTS(ts)},function(){});
+  }).then(function(){
+    return jget(b+'/tags').then(function(tg){
+      var items=(tg&&(tg.items||tg.tags))||[];
+      items=items.slice().sort(function(a,c){return c.count-a.count});
+      $('tagtotal').textContent='· 共 '+fmt(items.length)+' 个标签（GET /tags）';
+      renderTags(items.slice(0,10),items.length?items[0].count:1);
+      renderFilterChips(items.slice(0,12));
+    },function(){});
+  }).then(function(){
+    $('upd').textContent='更新于 '+new Date().toTimeString().slice(0,8);
+  });
+}
+function renderTS(ts){
+  var buckets=(ts&&ts.buckets)||[];
+  var TS=buckets.map(function(d){
+    var lab=String(d.time||'');
+    lab=lab.length>=10?lab.slice(5,10).replace('-','/'):lab;
+    return [lab,d.world||0,d.experience||0,d.observation||0];
+  });
+  if(!TS.length){$('tschart').innerHTML='<div class="muted">时序数据为空</div>';return}
+  var MAX=1;TS.forEach(function(d){MAX=Math.max(MAX,d[1]+d[2]+d[3])});
+  var H=120,W=28,G=22,x=8,svg='<svg width="'+(x+TS.length*(W+G))+'" height="'+(H+22)+'">';
+  TS.forEach(function(d){
+    var segs=[['var(--t-world)',d[1]],['var(--t-exp)',d[2]],['var(--t-obs)',d[3]]],y=H;
+    segs.forEach(function(s){
+      var h=Math.round(s[1]/MAX*H*10)/10;if(h<=0)return;y-=h;
+      svg+='<rect x="'+x+'" y="'+y.toFixed(1)+'" width="'+W+'" height="'+h.toFixed(1)+'" rx="2" fill="'+s[0]+'"/>';
+    });
+    if(d[1]+d[2]+d[3]>0)svg+='<text x="'+(x+W/2)+'" y="'+(H-8-Math.round((d[1]+d[2]+d[3])/MAX*H))+'" fill="#a9a9ad" font-size="9" text-anchor="middle">'+(d[1]+d[2]+d[3])+'</text>';
+    svg+='<text x="'+(x+W/2)+'" y="'+(H+14)+'" fill="#a9a9ad" font-size="10" text-anchor="middle">'+esc(d[0])+'</text>';
+    x+=W+G;
+  });
+  svg+='<line x1="0" y1="'+H+'" x2="'+(x-G+8)+'" y2="'+H+'" stroke="rgba(127,127,127,.26)"/>';
+  svg+='</svg>';$('tschart').innerHTML=svg;
+}
+function renderTags(items,max){
+  $('tagbars').innerHTML=items.map(function(t){
+    var w=Math.max(3,Math.round(t.count/max*260));
+    return '<div class="trow"><span class="tn" title="'+esc(t.tag)+'">'+esc(t.tag)+'</span><span class="bar" style="width:'+w+'px"></span><span class="tc">'+fmt(t.count)+'</span></div>';
+  }).join('')||'<div class="muted">无标签</div>';
+}
+function renderFilterChips(items){
+  var host=$('f-tags');host.innerHTML='';
+  items.forEach(function(t){
+    var c=document.createElement('span');c.className='tagchip plain';c.textContent=t.tag;
+    c.onclick=function(){c.classList.toggle('plain')};
+    host.appendChild(c);
+  });
 }
 
-/* ================= recall ================= */
-async function renderRecall(el){
-  el.innerHTML='<div class="filters"><input id="r-q" type="search" placeholder="召回测试查询…" style="min-width:320px">'
-    +'<select id="r-budget"><option value="low">budget: low</option><option value="mid">budget: mid</option><option value="high">budget: high</option></select>'
-    +'<label class="switch"><input type="checkbox" id="r-trace"> trace</label>'
-    +'<button class="primary" id="r-go">召回</button></div>'
-    +'<div class="muted" style="margin-bottom:10px">本地 CPU 下 budget=low 实测约 50s+，请耐心等待；结果为只读。</div>'
-    +'<div id="r-status"></div><div id="r-results"></div>';
-  $("#r-go",el).onclick=async()=>{
-    const q=$("#r-q",el).value.trim(); if(!q){$("#r-status",el).innerHTML='<span class="muted">请输入查询</span>';return;}
-    const budget=$("#r-budget",el).value, trace=$("#r-trace",el).checked;
-    const B=BANK_PATH(state.bankId);
-    $("#r-status",el).innerHTML='<span class="spin"></span>召回中（budget='+budget+'，长超时 150s）…'; $("#r-results",el).innerHTML="";
-    try{
-      const body={query:q,budget:budget,max_tokens:2048,trace:trace};
-      const t0=Date.now(); const d=await apiPost(B+"/memories/recall",body,150000);
-      const dt=((Date.now()-t0)/1000).toFixed(1);
-      $("#r-status",el).innerHTML='<span class="chip ok">完成 · '+dt+'s</span>';
-      const arr=d.memories||d.results||d.items||[];
-      $("#r-results",el).innerHTML= arr.length? arr.map(m=>{
-        const txt=m.text||m.fact||m.summary||m.content||JSON.stringify(m);
-        const sc=(m.score!=null?'<span class="chip">score '+Number(m.score).toFixed(3)+'</span>':'');
-        return '<div class="card"><h4>'+esc(txt)+'</h4><div>'+sc
-          +(m.fact_type?'<span class="chip type-'+esc(m.fact_type)+'">'+esc(m.fact_type)+'</span>':'')
-          +((m.tags||[]).map(t=>'<span class="chip">'+esc(t)+'</span>').join(""))+'</div></div>';
-      }).join("") : '<div class="empty">无召回结果</div>'
-        + (trace&&d.trace?'<h3 class="sec">trace</h3><div class="pre">'+esc(JSON.stringify(d.trace,null,2))+'</div>':'');
-    }catch(e){ $("#r-status",el).innerHTML=""; $("#r-results",el).innerHTML='<div class="empty">召回失败：'+esc(e.message||e)+'</div>'; }
-  };
+/* ───────────── 局域网探活 ───────────── */
+var LAN=[['Qwen3.6 提取',11438],['Laya 决策',11440],['Embed',11435],['Rerank',11439],['Status',9091]];
+function probeLan(){
+  var host=$('lan');
+  LAN.forEach(function(s){
+    var el=document.createElement('div');el.className='svc';
+    el.innerHTML='<span class="dot" style="background:var(--ink3);box-shadow:none"></span>'+esc(s[0])+' · '+s[1];
+    host.appendChild(el);
+    var dot=el.querySelector('.dot');
+    var c=new AbortController();var t=setTimeout(function(){c.abort()},3500);
+    fetch('http://127.0.0.1:'+s[1]+'/',{mode:'no-cors',signal:c.signal})
+      .then(function(){clearTimeout(t);dot.className='dot'},
+        function(){clearTimeout(t);dot.className='dot down'});
+  });
 }
 
-/* ================= queue ================= */
-async function renderQueue(el){
-  const B=BANK_PATH(state.bankId);
-  el.innerHTML='<div class="filters"><span class="muted">后台操作队列（retain 提取 / 归纳 / 页面刷新）</span><span class="grow"></span><button id="q-go">刷新</button></div>'
-    +'<div id="q-list"></div>';
-  $("#q-go",el).onclick=()=>refresh();
-  const d=await apiGet(B+"/operations?"+new URLSearchParams({limit:25,offset:0}));
-  const ops=d.operations||[];
-  $("#q-list",el).innerHTML= ops.length? ops.map(op=>{
-    let prog="";
-    if(op.progress){ const p=op.progress; const total=p.total||0, done=p.processed||0;
-      prog='<div style="margin:8px 0"><div class="muted mono">'+esc(p.stage||"")+ (total?(' · '+fmtN(done)+'/'+fmtN(total)):'') +(p.detail?(' · '+esc(p.detail)):'')+'</div>'
-        +'<div class="bar"><span style="transform:scaleX('+(total?done/total:0)+')"></span></div></div>';
-    }
-    const statusChip='<span class="chip '+ (op.status==="completed"?"ok": op.status==="failed"?"err": op.status==="processing"?"stale":"") +'">'+esc(op.status)+'</span>';
-    return '<div class="card"><h4>'+esc(op.operation_type||op.task_type)+' <span class="muted mono" style="font-weight:400">'+esc(String(op.id).slice(0,8))+'</span></h4>'
-      +'<div>'+statusChip+(op.mental_model_id?'<span class="chip mono">'+esc(String(op.mental_model_id).slice(0,14))+'</span>':'')
-      +(op.document_id?'<span class="chip mono">'+esc(String(op.document_id).slice(0,26))+'</span>':'')+'</div>'
-      +'<div class="muted" style="margin-top:6px">'+fmtT(op.created_at)+' → '+fmtT(op.updated_at)+(op.retry_count?(' · retry '+op.retry_count):'')+'</div>'
-      +prog
-      +(op.error_message?'<div class="pre" style="border-color:rgba(231,76,60,.4);color:var(--err)">'+esc(op.error_message)+'</div>'
-        +'<div style="margin-top:6px"><button disabled title="写操作：D2 拍板后启用">重试</button></div>':'')
-      +'</div>';
-  }).join("") : '<div class="empty">队列为空</div>';
-  requestAnimationFrame(()=>[...el.querySelectorAll(".bar>span")].forEach(s=>{const m=/scaleX\(([\d.]+)\)/.exec(s.getAttribute("style"));if(m)s.style.transform="scaleX("+m[1]+")";}));
+/* ───────────── 记忆卡片 ───────────── */
+function badgeCls(t){return t==='world'?'b-world':(t==='experience'?'b-exp':(t==='observation'?'b-obs':'b-misc'))}
+function memFilters(){
+  var p=[];var type=$('f-type').value,state=$('f-state').value;
+  var tags=[].slice.call(document.querySelectorAll('#f-tags .tagchip:not(.plain)')).map(function(c){return c.textContent});
+  var time=$('f-time').value,q=$('f-q').value.trim();
+  if(type)p.push('type='+encodeURIComponent(type));
+  if(state)p.push('state='+encodeURIComponent(state));
+  if(tags.length)p.push('tags='+encodeURIComponent(tags.join(','))+'&tags_match=any');
+  if(time)p.push('time_field=created_at&start_date='+encodeURIComponent(new Date(Date.now()-time*864e5).toISOString()));
+  if(q)p.push('q='+encodeURIComponent(q));
+  return p.length?'&'+p.join('&'):'';
+}
+function loadMemories(page){
+  if(!S.bank)return;
+  S.memPage=page;
+  var lim=20,off=page*lim;
+  $('memlist').innerHTML='<div class="muted">加载中…</div>';
+  jget(base()+'/memories/list?limit='+lim+'&offset='+off+memFilters()).then(function(d){
+    var items=(d&&d.items)||[],total=(d&&d.total)||0;
+    $('memlist').innerHTML=items.map(function(m){
+      var tags=(m.tags||[]).slice(0,3).map(function(t){return '<span class="tagchip plain">'+esc(t)+'</span>'}).join('');
+      var meta=[];
+      if(m.metadata&&m.metadata.repo)meta.push('repo: '+esc(m.metadata.repo));
+      meta.push('proof '+(m.proof_count!=null?m.proof_count:'—'));
+      meta.push(fmtDT(m.date));
+      meta.push('#'+esc(trunc(m.id||'',8)));
+      return '<div class="mem"><div class="head"><span class="badge '+badgeCls(m.fact_type)+'">'+esc(m.fact_type||'—')+'</span>'
+        +'<span class="badge '+(m.state==='invalid'?'b-invalid':'b-valid')+'">'+esc(m.state||'valid')+'</span>'+tags+'</div>'
+        +'<div class="text" title="'+esc(trunc(m.text,400))+'">'+esc(trunc(m.text,300))+'</div>'
+        +'<div class="meta">'+meta.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div></div>';
+    }).join('')||'<div class="ph">无匹配记忆</div>';
+    renderPager($('mempager'),total,lim,page,function(p){loadMemories(p)});
+  }).catch(function(e){$('memlist').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+}
+function renderPager(host,total,lim,page,go){
+  var pages=Math.max(1,Math.ceil(total/lim)),btns=[];
+  function mk(p,label,on){return '<span class="pg'+(on?' on':'')+'" data-p="'+p+'">'+(label||p)+'</span>'}
+  var from=Math.max(1,page-2),to=Math.min(pages,from+4);from=Math.max(1,Math.min(from,to-4));
+  if(page>0)btns.push(mk(page-1,'‹'));
+  for(var p=from;p<=to;p++)btns.push(mk(p-1,null,p-1===page));
+  if(pages>to)btns.push('<span class="muted">…</span>'+mk(pages-1));
+  if(page<pages-1)btns.push(mk(page+1,'›'));
+  host.innerHTML='每页 '+lim+' · 共 '+fmt(total)+' 条 &nbsp;'+btns.join(' ');
+  host.querySelectorAll('.pg').forEach(function(b){b.onclick=function(){go(+b.getAttribute('data-p'))}});
+}
+$('f-apply').onclick=function(){loadMemories(0)};
+
+/* ───────────── 对话原文 ───────────── */
+function loadDocs(){
+  if(!S.bank)return;
+  $('doclist').innerHTML='<div class="muted">加载中…</div>';
+  var q=$('f-docq').value.trim();
+  jget(base()+'/documents?limit=40&offset=0'+(q?'&q='+encodeURIComponent(q):'')).then(function(d){
+    S.docList=(d&&d.items)||[];
+    $('doclist').innerHTML=S.docList.map(function(doc,i){
+      var isConv=/conversation/.test(doc.id||'');
+      var mt=[];
+      mt.push('<span class="badge '+(isConv?'b-exp':'b-world')+'" style="font-size:10px">'+(isConv?'conversation':'document')+'</span>');
+      if(doc.text_length!=null)mt.push('<span>'+fmt(doc.text_length)+' 字</span>');
+      if(doc.memory_unit_count!=null)mt.push('<span>'+doc.memory_unit_count+' 卡片</span>');
+      var rp=doc.retain_params||{},md=rp.metadata||{};
+      if(md.repo)mt.push('<span>repo: '+esc(md.repo)+'</span>');
+      mt.push('<span>'+fmtDT(doc.updated_at||doc.created_at)+'</span>');
+      return '<div class="doc" data-i="'+i+'"><div class="id">'+esc(doc.id)+'</div><div class="mt">'+mt.join('')+'</div></div>';
+    }).join('')||'<div class="ph">无文档</div>';
+    $('doclist').querySelectorAll('.doc').forEach(function(el){
+      el.onclick=function(){
+        $('doclist').querySelectorAll('.doc').forEach(function(x){x.classList.remove('on')});
+        el.classList.add('on');loadDocDetail(S.docList[+el.getAttribute('data-i')]);
+      };
+    });
+  }).catch(function(e){$('doclist').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+}
+function loadDocDetail(doc){
+  if(!doc)return;
+  $('docview').innerHTML='<div class="card"><h3>'+esc(doc.id)+'</h3><div class="muted">加载 original_text…</div></div>';
+  jget(base()+'/documents/'+encodeURIComponent(doc.id)).then(function(d){
+    var raw=(d&&(d.original_text||d.content||''))||'';
+    var lines=[],bubbles='';
+    String(raw).split('\n').forEach(function(ln){
+      ln=ln.trim();if(!ln)return;
+      try{lines.push(JSON.parse(ln))}catch(e){/* 非 JSONL 行忽略 */}
+    });
+    if(!lines.length)bubbles='<div class="ph">original_text 为空或非 JSONL</div>';
+    lines.forEach(function(o){
+      var role=String(o.role||'system').toLowerCase();
+      var cls=role==='user'?'user':(role==='assistant'?'assistant':'tool');
+      var who=role==='user'?'用户':(role==='assistant'?'助手':(role==='system'?'system 行':(role==='tool'?('工具'+(o.name?' · '+o.name:'')):role)));
+      var ts=o.timestamp!=null?esc(String(o.timestamp).slice(0,19)):'';
+      bubbles+='<div class="bubble '+cls+'">'+(who||ts?'<div class="who">'+esc(who)+(ts?' · '+ts:'')+'</div>':'')+esc(trunc(o.content!=null?o.content:o.text||'',1200))+'</div>';
+    });
+    $('docview').innerHTML='<div class="card"><h3>original_text 渲染（JSONL 按 role 着色）· '+lines.length+' 行</h3>'+bubbles
+      +'<div class="epi">数据源：<code>GET /documents/{id}</code> · original_text 为 JSONL（每行 {role,timestamp,content}）</div></div>';
+  }).catch(function(e){$('docview').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+}
+$('f-docapply').onclick=loadDocs;
+
+/* ───────────── 知识页面 ───────────── */
+function flatNodes(roots){
+  var out=[];(roots||[]).forEach(function(n){out.push(n);(n.children||[]).forEach(function(c){out.push(c)})});
+  return out;
+}
+function loadPages(){
+  if(!S.bank)return;
+  $('pagetree').innerHTML='<div class="muted">加载中…</div>';
+  jget(base()+'/pages/tree').then(function(d){
+    var nodes=flatNodes(d&&(d.roots||d.pages));
+    var all=$('btn-export-all');
+    all.href=base()+'/pages/export';
+    $('pagetree').innerHTML=nodes.map(function(n,i){
+      return '<div class="node" data-i="'+i+'">📄 '+esc(n.name||n.id)+(n.is_stale?' <span class="stale">陈旧</span>':'')+'</div>';
+    }).join('')||'<div class="ph">无页面</div>';
+    $('pagetree').querySelectorAll('.node').forEach(function(el){
+      el.onclick=function(){
+        $('pagetree').querySelectorAll('.node').forEach(function(x){x.classList.remove('on')});
+        el.classList.add('on');S.pageSel=nodes[+el.getAttribute('data-i')];loadPageDetail(S.pageSel);
+      };
+    });
+  }).catch(function(e){$('pagetree').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+}
+function loadPageDetail(n){
+  if(!n)return;
+  var one=$('btn-export-one');
+  one.style.display='inline-block';
+  one.href=base()+'/pages/tree/'+encodeURIComponent(n.id)+'/export';
+  $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧 · 刷新于 '+fmtDT(n.last_refreshed_at)+'</span>':'')+'</h3><div class="muted">加载正文…</div></div>';
+  jget(base()+'/pages/tree/'+encodeURIComponent(n.id)+'/export').then(function(d){
+    var md=(d&&(d.content||d.markdown))||(typeof d==='string'?d:JSON.stringify(d,null,1));
+    $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧 · 刷新于 '+fmtDT(n.last_refreshed_at)+'</span>':'')+'</h3>'
+      +'<div class="pagemd">'+esc(md)+'</div>'
+      +'<div class="epi">蒸馏页本质 = mental models；刷新计划 refresh_cron 随树返回。导出：<a href="'+one.href+'" style="color:var(--acc)">本页 .md</a></div></div>';
+  }).catch(function(e){$('pageview').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
 }
 
-/* ================= boot ================= */
-window.refresh=refresh;
-refresh();
+/* ───────────── 召回测试 ───────────── */
+$('recall-go').onclick=function(){
+  var q=$('recall-q').value.trim();
+  if(!q){$('recall-q').focus();return}
+  var budget=(document.querySelector('input[name="rb"]:checked')||{}).value||'low';
+  var trace=$('recall-trace').checked;
+  $('recall-out').hidden=true;$('recall-prog').hidden=false;
+  var t0=Date.now();
+  $('recall-progtext').textContent='召回执行中… 已 0s / 预算 '+budget+'（本地 CPU 慢，budget=low 亦可达 51.4s）';
+  S.opsTimer=setInterval(function(){
+    $('recall-progtext').textContent='召回执行中… 已 '+Math.round((Date.now()-t0)/1000)+'s / 预算 '+budget;
+  },1000);
+  jpost(base()+'/memories/recall',{query:q,budget:budget,trace:trace,prefer_observations:true},150000)
+  .then(function(d){
+    clearInterval(S.opsTimer);$('recall-prog').hidden=true;$('recall-out').hidden=false;
+    var items=(d&&(d.results||d.memories||d.items))||[];
+    $('recall-list').innerHTML=items.map(function(r){
+      var score=r.score!=null?r.score:(r.similarity!=null?r.similarity:null);
+      var head='<span class="badge '+badgeCls(r.fact_type||r.type)+'">'+esc(r.fact_type||r.type||'result')+'</span>';
+      if(score!=null)head+='<span class="scorebar"><i style="width:'+Math.round(score*100)+'%"></i></span><span class="muted">score '+score+'</span>';
+      var meta=[];
+      if(r.source_facts)meta.push('source_facts: '+esc(JSON.stringify(trunc(JSON.stringify(r.source_facts),120))));
+      if(r.document_id)meta.push('doc: '+esc(trunc(r.document_id,24)));
+      return '<div class="mem"><div class="head">'+head+'</div><div class="text">'+esc(trunc(r.text||r.content||JSON.stringify(r),600))+'</div>'
+        +(meta.length?'<div class="meta">'+meta.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div>':'')+'</div>';
+    }).join('')||'<div class="ph">无结果（原始返回见轨迹）'+(d&&d.answer?('<br>answer: '+esc(trunc(d.answer,400))):'')+'</div>';
+    if(trace&&d&&d.trace){
+      $('tracefold').hidden=false;$('tracepre').textContent=JSON.stringify(d.trace,null,1).slice(0,8000);
+    }else{$('tracefold').hidden=true}
+  }).catch(function(e){
+    clearInterval(S.opsTimer);$('recall-prog').hidden=true;$('recall-out').hidden=false;
+    $('recall-list').innerHTML='<div class="ph">召回失败：'+esc(e.message||e)+'（长任务 150s 超时；budget=low 实测可达 51.4s）</div>';
+  });
+};
+$('tracefold').onclick=function(){this.classList.toggle('open')};
+
+/* ───────────── 后台队列 ───────────── */
+function loadOps(){
+  if(!S.bank)return;
+  var st=$('ops-status').value;
+  $('opslist').innerHTML='<div class="muted">加载中…</div>';
+  jget(base()+'/operations?limit=30&offset=0'+(st?'&status='+encodeURIComponent(st):'')).then(function(d){
+    var ops=(d&&d.operations)||[];
+    $('opslist').innerHTML=ops.map(function(o){
+      var failed=o.status==='failed';
+      var pr=o.progress||{};
+      var pct=(pr.total>0)?Math.round((pr.processed||0)/pr.total*100):((o.status==='completed')?100:0);
+      return '<div class="opcard'+(failed?' failed':'')+'"><div class="l1">'
+        +'<span class="badge '+(failed?'b-invalid':'b-valid')+'" style="font-size:10px">'+esc(o.status||'—')+'</span>'
+        +'<b>'+esc(o.task_type||o.operation_type||'—')+'</b>'
+        +(o.document_id?'<span class="muted">document_id: '+esc(trunc(o.document_id,36))+'</span>':'')
+        +(o.mental_model_id?'<span class="muted">'+esc(trunc(o.mental_model_id,18))+'</span>':'')
+        +'<span class="muted">'+fmtDT(o.updated_at||o.created_at)+'</span>'
+        +(failed?'<span class="spacer"></span><button class="ghost dis" title="MVP 只读（方案 D2 拍板后才启用写操作）">↻ 重试这条</button>':'')
+        +'</div>'
+        +(pr.stage?'<div class="pr">stage: '+esc(pr.stage)+' <span class="pbar"><i style="width:'+pct+'%"></i></span> '+(pr.processed!=null?pr.processed:'—')+'/'+(pr.total!=null?pr.total:'—')+'</div>':'')
+        +(failed&&o.error_message?'<div class="err">'+esc(trunc(o.error_message,300))+'</div>':'')
+        +'</div>';
+    }).join('')||'<div class="ph">无操作记录</div>';
+  }).catch(function(e){$('opslist').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+}
+$('ops-status').onchange=loadOps;
+
+/* ───────────── 启动/轮询 ───────────── */
+function boot(skipBanks){
+  return (skipBanks?Promise.resolve():loadBanks()).then(function(){return loadVitals()}).then(function(){probeLan()});
+}
+$('btn-refresh').onclick=function(){loadVitals();probeLan()};
+$('autoref').onchange=function(e){
+  if(S.timer){clearInterval(S.timer);S.timer=null}
+  if(e.target.checked)S.timer=setInterval(function(){loadVitals()},30000);
+};
+S.timer=setInterval(function(){loadVitals()},30000);
+boot();
 </script>
 </body>
 </html>
