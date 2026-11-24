@@ -63,10 +63,29 @@ export const LIVE_DECLARATION =
   "If it is wrong (its source does not say it, or the code or a later decision contradicts it):\n" +
   `${NOTE_DISMISS} <what it said>; wrong: <why>`;
 
-/** Where the agent can read a note's source. Commit ids are this repo's own, so git can show them. */
-function whereFor(source: SessionNote["source"]): string {
+const git = (cwd: string, ...args: string[]): string => {
+  try {
+    return gitWithTimeout(cwd, 5000, ...args);
+  } catch (e) {
+    // `git diff --no-index` exits 1 when the files differ, which is every new file: keep its output.
+    const out = (e as { stdout?: unknown }).stdout;
+    return typeof out === "string" ? out : "";
+  }
+};
+
+/**
+ * Where the agent can read a note's source. A commit id is shown with `git show` only when this
+ * checkout has it: after a squash or a rebase it is gone, and on sdebench (2026-11-24, the repo is
+ * rebuilt each attempt) agents ran `git cat-file` on it, called the note "a fabricated citation" and
+ * set aside correct rules with it (2 nudges in 5 tasks).
+ */
+function whereFor(source: SessionNote["source"], cwd?: string): string {
   const id = source?.document_id ?? "";
-  if (id.startsWith("git:")) return `git show ${id.slice(4, 16)}`;
+  if (id.startsWith("git:")) {
+    const sha = id.slice(4, 16);
+    if (!cwd || git(cwd, "cat-file", "-t", sha).trim() === "commit") return `git show ${sha}`;
+    return "a past commit no longer in this checkout (squashed or rebased away: its quoted words are its source)";
+  }
   if (id.startsWith("gitlog:")) return "git log";
   if (id.startsWith("conversation:") || id.startsWith("chat:"))
     return `a past session${source?.mentioned_at ? ` (${source.mentioned_at.slice(0, 10)})` : ""}`;
@@ -77,26 +96,16 @@ function whereFor(source: SessionNote["source"]): string {
  * What the agent reads for a note: the note, where its source is and the source's own words, then
  * a reminder to credit it (a note can land long after the session-start declaration).
  */
-export function renderNote(n: SessionNote): string {
+export function renderNote(n: SessionNote, cwd?: string): string {
   const quote = n.source?.quote ?? "";
   // The bank-wide number: the server reads the agent's line by it, and the user can search it.
   const num = n.number ?? n.seq;
   return (
-    `${NOTE_LEAD.replace("thought:", `thought #${num}:`)} ${n.text.trim()} Source: ${whereFor(n.source)}${quote ? ` — "${quote}"` : ""}` +
+    `${NOTE_LEAD.replace("thought:", `thought #${num}:`)} ${n.text.trim()} Source: ${whereFor(n.source, cwd)}${quote ? ` — "${quote}"` : ""}` +
     `. Share it with the user: "${noteCredit(num)} …" if you did something differently because of it, ` +
     `else "${noteDismiss(num)} …; no change: …" (or "…; wrong: …" if it is wrong)`
   );
 }
-
-const git = (cwd: string, ...args: string[]): string => {
-  try {
-    return gitWithTimeout(cwd, 5000, ...args);
-  } catch (e) {
-    // `git diff --no-index` exits 1 when the files differ, which is every new file: keep its output.
-    const out = (e as { stdout?: unknown }).stdout;
-    return typeof out === "string" ? out : "";
-  }
-};
 
 /** The agent's change to the source: tracked edits plus new files (`git diff` alone skips those). */
 export function sourceDiff(cwd: string): string {

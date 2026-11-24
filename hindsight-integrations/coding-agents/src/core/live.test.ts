@@ -66,3 +66,26 @@ describe("sourceDiff", () => {
     expect(sourceDiff(repo)).toContain("+K = 1024");
   });
 });
+
+describe("a commit source this checkout does not have", () => {
+  it("is named as gone, not sent to git show", () => {
+    const repo = mkdtempSync(join(tmpdir(), "live-src-"));
+    execFileSync("git", ["init", "-q"], { cwd: repo });
+    execFileSync(
+      "git",
+      ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "x"],
+      {
+        cwd: repo,
+      }
+    );
+    const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo }).toString().trim();
+    const at = (sha: string) =>
+      renderNote({ seq: 1, text: "K.", source: { document_id: `git:${sha}` } }, repo).split(
+        "Source: "
+      )[1];
+    expect(at(head)).toMatch(/^git show [0-9a-f]{12}\./);
+    expect(at("51781bfca1b875de0ef6c2001299263fea63cec2")).toMatch(
+      /^a past commit no longer in this checkout/
+    );
+  });
+});

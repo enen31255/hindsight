@@ -280,7 +280,7 @@ export async function syncSession(args: {
     notes.sort((a, b) => a.seq - b.seq);
     if (notes.length) state.ack = notes[notes.length - 1].seq;
     writeFileSync(stateFile, JSON.stringify(state));
-    return { notes: notes.map(renderNote), unsupported: false, checking };
+    return { notes: notes.map((n) => renderNote(n, args.cwd)), unsupported: false, checking };
   } finally {
     rmSync(lockFile, { force: true });
   }
