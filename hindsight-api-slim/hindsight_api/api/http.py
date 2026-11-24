@@ -4724,6 +4724,12 @@ def create_app(
             app.include_router(root_router)
             logging.info("HTTP extension root router mounted")
 
+    # Fork addition (hindsight-board branch): built-in memory board UI at /ui.
+    # Mounted after all upstream routes; purely additive, no engine changes.
+    from .board import mount_board
+
+    mount_board(app)
+
     # Client-disconnect cancellation for recall/reflect. Added LAST so it sits
     # OUTSIDE the @app.middleware("http") (BaseHTTPMiddleware) layers above —
     # that placement is mandatory: BaseHTTPMiddleware breaks

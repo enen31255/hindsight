@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hindsight 记忆看板（hindsight-board PoC）</title>
+<!-- hindsight-board marker: poc-placeholder-v0 -->
+<style>
+  :root {
+    --wb-accent: color-mix(in srgb, #2E9B7B 62%, #14493A);
+    --wb-ok: #2E9B7B;
+    --wb-ink-1: #eee;
+    --wb-ink-2: #a9a9ad;
+    --wb-surface: rgba(255, 255, 255, .03);
+    --wb-sunk: rgba(127, 127, 127, .08);
+    --wb-line: rgba(127, 127, 127, .26);
+    --wb-r-1: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    background: #14161a; color: var(--wb-ink-1);
+    font: 14px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .card {
+    max-width: 640px; margin: 0 auto;
+    background: var(--wb-surface);
+    border: 1px solid var(--wb-line);
+    border-radius: var(--wb-r-1);
+    padding: 20px 24px;
+  }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  .sub { color: var(--wb-ink-2); font-size: 12px; margin-bottom: 16px; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0;
+         border-top: 1px solid var(--wb-line); }
+  .row:first-of-type { border-top: 0; }
+  .pill { color: var(--wb-ok); font-weight: 600; }
+  .pill.down { color: #E74C3C; }
+  code { background: var(--wb-sunk); padding: 1px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Hindsight 记忆看板 · PoC 占位页</h1>
+    <div class="sub">hindsight-board 分支静态挂载验证页（完整界面待 UI 移植阶段）· 同源直连本 API</div>
+    <div id="health">健康检查：请求中…</div>
+    <div class="row"><span>挂载路径</span><code>/ui</code></div>
+    <div class="row"><span>同源 fetch</span><code>/health</code></div>
+    <div class="row"><span>分支标记</span><code>hindsight-board poc-placeholder-v0</code></div>
+  </div>
+  <script>
+    (function () {
+      var el = document.getElementById("health");
+      fetch("/health").then(function (r) { return r.json(); }).then(function (j) {
+        var ok = j && j.status === "healthy";
+        el.innerHTML = "健康检查：<span class='pill " + (ok ? "" : "down") + "'>"
+          + (ok ? "● " + j.status + " · db=" + j.database + " · pool_in_use=" + j.db_pool_in_use
+               : "● 异常响应")
+          + "</span>（同源直连，无代理无 CORS）";
+      }).catch(function (e) {
+        el.innerHTML = "健康检查：<span class='pill down'>● 失败 " + e + "</span>";
+      });
+    })();
+  </script>
+</body>
+</html>
