@@ -183,6 +183,40 @@ button.dis{opacity:.45;cursor:not-allowed}
 .trow .tc{color:var(--ink3);font-size:11.5px;width:52px}
 footer.foot{border-top:1px solid var(--line-soft);padding:10px 18px;font-size:11.5px;color:var(--ink3);line-height:1.7;background:var(--footer-bg)}
 footer.foot b{color:var(--ink2)}
+/* ── 设置（⑦）/帮助（⑧）页签 ── */
+.cfg-actions{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.pill.warn{background:var(--stale-bg);color:var(--stale-ink);outline:1px solid rgba(243,156,18,.4)}
+.pill.warn i{background:var(--stale-ink);box-shadow:0 0 6px var(--stale-ink)}
+.frow{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed var(--line-soft)}
+.frow:last-child{border-bottom:none}
+.frow .flabel{width:230px;flex:none;font-size:12.5px;color:var(--ink1)}
+.frow .flabel code{display:block;font-size:10.5px;color:var(--ink3);font-weight:400}
+.frow .fctrl{flex:1;min-width:0}
+.frow .fctrl input[type=text],.frow .fctrl input[type=number],.frow .fctrl select{width:100%;max-width:320px;background:var(--sunk);color:var(--ink1);border:1px solid var(--line);border-radius:var(--r1);padding:5px 9px;font-size:12.5px;font-family:inherit}
+.frow .fctrl textarea{width:100%;min-height:64px;resize:vertical;background:var(--sunk);color:var(--ink1);border:1px solid var(--line);border-radius:var(--r1);padding:8px 10px;font-size:12px;line-height:1.5;font-family:inherit}
+.frow .fctrl input[type=checkbox]{accent-color:var(--acc);width:15px;height:15px}
+.frow .fhint{width:230px;flex:none;font-size:11px;color:var(--ink3)}
+.frow.dirty .flabel::after{content:" ●";color:var(--p1)}
+.cfg-overridden{font-size:10px;padding:1px 7px;border-radius:99px;background:rgba(46,155,123,.12);color:var(--acc);outline:1px solid rgba(46,155,123,.38);margin-left:6px}
+.cfg-msg{margin-top:10px;border-radius:var(--r1);padding:8px 12px;font-size:12px;word-break:break-all}
+.cfg-msg.ok{background:rgba(46,155,123,.12);outline:1px solid rgba(46,155,123,.38);color:var(--acc)}
+.cfg-msg.err{background:var(--err-bg);color:var(--err-ink);outline:1px solid var(--banner-line)}
+#v-settings.cfg-off .fctrl,#v-settings.cfg-off .cfg-actions button{opacity:.45;pointer-events:none}
+#cfg-foldpre{white-space:pre-wrap;word-break:break-all;background:var(--sunk);border:1px solid var(--line-soft);border-radius:var(--r1);padding:10px;font-size:11px;color:var(--ink2);max-height:320px;overflow:auto;font-family:ui-monospace,Consolas,monospace;margin-top:8px}
+#modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:50}
+#modal-backdrop[hidden]{display:none}
+.modal{width:min(620px,92vw);max-height:82vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--shadow);padding:16px 18px}
+.modal h3{margin-bottom:10px}
+.diffrow{display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line-soft);font-size:12px}
+.diffrow .dk{width:200px;flex:none;color:var(--ink2);word-break:break-all}
+.diffrow .dold{color:var(--err-ink);text-decoration:line-through;flex:1;min-width:0;word-break:break-all}
+.diffrow .dnew{color:var(--acc);flex:1;min-width:0;word-break:break-all}
+.help-toc button{display:block;width:100%;text-align:left;background:transparent;border:none;border-left:2px solid transparent;color:var(--ink2);padding:5px 10px;cursor:pointer;font-size:12.5px;font-family:inherit;border-radius:0 var(--r1) var(--r1) 0}
+.help-toc button.on{color:var(--acc);border-left-color:var(--acc);background:rgba(46,155,123,.12)}
+.help-sec{margin-bottom:14px}
+.help-sec p,.help-sec li{font-size:12.5px;color:var(--ink2)}
+.help-sec ul{padding-left:18px;margin:6px 0}
+.help-sec code{background:var(--sunk);border-radius:4px;padding:0 5px;font-size:11px}
 </style>
 </head>
 <body>
@@ -327,13 +361,120 @@ footer.foot b{color:var(--ink2)}
         <div class="epi">数据源：<code>GET /operations?status</code> · 结构化 progress:{stage,processed,total} 为新增展示（8899 只做状态计数），借鉴上游 bank-operations-view</div>
       </section>
 
+      <!-- ⑦ 设置 -->
+      <section id="v-settings">
+        <div class="card" id="cfg-gate" hidden>
+          <h3>写通道已关闭（只读模式）</h3>
+          <div class="muted">引擎以 HINDSIGHT_API_ENABLE_BANK_CONFIG_API=false 运行（或版本不支持）：PATCH 被门禁 404，本页降级为只读展示。恢复写通道需在 daemon 环境开启该变量并重启 daemon。</div>
+        </div>
+        <div class="card">
+          <h3>bank 配置 <span class="muted" style="font-weight:400">· PATCH /banks/{id}/config · 两步确认 · 整批原子</span></h3>
+          <div class="muted" id="cfg-meta">加载中…</div>
+          <div class="cfg-actions">
+            <span class="pill warn" id="cfg-dirtychip" hidden><i></i>未保存更改 <b id="cfg-dirtyn">0</b> 项</span>
+            <span class="spacer"></span>
+            <button class="ghost" id="cfg-reload">⟳ 重新读取</button>
+            <button class="ghost" id="cfg-revert" hidden>↩ 放弃更改</button>
+            <button class="ghost" id="cfg-snap" hidden>⏪ 回滚到最近保存…</button>
+            <button class="ghost" id="cfg-save" hidden>💾 保存更改…</button>
+          </div>
+          <div class="cfg-msg" id="cfg-msg" hidden></div>
+        </div>
+        <div class="card"><h3>库身份（名称 · mission）</h3><div id="cfg-f-id"></div></div>
+        <div class="card"><h3>倾向 disposition（1–5 · null=继承默认）</h3><div id="cfg-f-disp"></div></div>
+        <div class="card"><h3>召回与检索</h3><div id="cfg-f-recall"></div></div>
+        <div class="card"><h3>摄取 retain</h3><div id="cfg-f-retain"></div></div>
+        <div class="card"><h3>归纳 consolidation</h3><div id="cfg-f-cons"></div></div>
+        <div class="card"><h3>杂项与决策模型</h3><div id="cfg-f-misc"></div></div>
+        <div class="card"><h3>其余配置（只读 · 白名单外字段）</h3><div class="muted" id="cfg-rohint"></div><button class="ghost" id="cfg-foldbtn" style="margin-top:8px">▸ 展开全部只读键</button><pre id="cfg-foldpre" hidden></pre></div>
+        <div class="epi">数据源：GET/PATCH /v1/default/banks/{id}/config（同源直取）· PATCH 为 updates 部分提交、merge 语义、整批原子（任一字段非法整批 400 零写入）· 热生效无需重启 · 回滚=「回滚到最近保存」整包 PATCH 快照 · 凭据/LLM/端口/DB 类为服务器级字段，引擎 400 硬拒</div>
+      </section>
+
+      <!-- ⑧ 帮助 -->
+      <section id="v-help">
+        <div class="duo">
+          <div class="left">
+            <div class="tree help-toc" id="help-toc"></div>
+            <div class="muted" style="margin-top:8px;font-size:11.5px">点击目录跳转 · 文档内置渲染，离线可读</div>
+          </div>
+          <div class="right" id="help-body">
+            <div class="card help-sec" id="h-1" data-toc="① 这是什么">
+              <h3>① 这是什么</h3>
+              <p>「记忆工作台」是本机 Hindsight 记忆库（单库 <code>coding-agent::dsh-brain</code>）的可视面板：本页由 hindsight fork 自带（<code>/ui</code>，:8888），DSH 侧栏「记忆」入口即内嵌本页。数据与引擎同源直取，无代理层、不经旧 8899 看板。</p>
+              <p>与机器上另外三套记忆系统（hermes-loop、工作台知识库、本地 Hermes）互不读写。</p>
+            </div>
+            <div class="card help-sec" id="h-2" data-toc="② 数据从哪来">
+              <h3>② 数据从哪来</h3>
+              <p>DSH 会话开始时 hook 自动把会话回写（retain）给 daemon（<code>127.0.0.1:8888</code>）→ 存入内嵌 PostgreSQL；LLM 提取走局域网 <code>192.168.1.14:11438</code>（Qwen3.6-35B），embedding/rerank 为本地模型不出网。</p>
+              <p>daemon 由 DSH hook 拉起，DSH 重启会带走它、下次会话自动重拉（离线横幅消失即恢复）。</p>
+            </div>
+            <div class="card help-sec" id="h-3" data-toc="③ 页签导览">
+              <h3>③ 页签导览</h3>
+              <ul>
+                <li><b>总览</b>：统计 8 格、近 7 天记忆增长、标签 Top10、局域网服务探活。</li>
+                <li><b>记忆卡片</b>：全部记忆条目，类型/状态/标签/时间/关键词服务端过滤，每页 20 条。</li>
+                <li><b>对话原文</b>：会话文档列表 + original_text JSONL 气泡渲染。</li>
+                <li><b>知识页面</b>：蒸馏页面树（Component map / Conventions / Key decisions 等），陈旧徽标 + 本页/整包导出。</li>
+                <li><b>召回测试</b>：语义检索自测，budget 三档。</li>
+                <li><b>后台队列</b>：LLM 后台任务进度与失败原因。</li>
+                <li><b>设置</b>：bank 配置白名单编辑（见 ⑤）。</li>
+              </ul>
+            </div>
+            <div class="card help-sec" id="h-4" data-toc="④ 召回测试怎么用">
+              <h3>④ 召回测试怎么用</h3>
+              <p>budget 三档控制检索规模与耗时：<code>low</code> 实测 40–110s（页面超时 150s）、<code>mid/high</code> 更久更全；trace 展开可看召回轨迹。结果分数 = <code>scores.final</code>（rerank 与语义融合分）。非法 budget 会 422。</p>
+            </div>
+            <div class="card help-sec" id="h-5" data-toc="⑤ 设置页说明">
+              <h3>⑤ 设置页说明</h3>
+              <ul>
+                <li>只有白名单字段可写：<code>PATCH /banks/{id}/config</code>，merge 语义（只发改动键）、整批原子（任一字段非法整批 400、零写入）、热生效无需重启。</li>
+                <li>徽标「覆盖」= 本库覆盖项；无徽标 = 继承全局默认。倾向 disposition 选「继承默认」即发送 null 清除覆盖。</li>
+                <li>保存 = 两步确认（逐字段 diff → 3 秒倒计时）；「回滚到最近保存」= 把最近一次成功保存时的全部覆盖项整包恢复。</li>
+                <li>凭据 / LLM 模型 / 端口 / 数据库类是<b>服务器级字段</b>，引擎直接 400 拒绝（daemon 启动环境自管）；本页不会渲染它们。</li>
+                <li>写通道被 env 关闭时（<code>HINDSIGHT_API_ENABLE_BANK_CONFIG_API=false</code>）本页降级只读并显示横幅。</li>
+              </ul>
+            </div>
+            <div class="card help-sec" id="h-6" data-toc="⑥ 后台队列与失败">
+              <h3>⑥ 后台队列与失败</h3>
+              <p>operations = 后台 LLM 任务（retain 提取 / reflect 归纳 / 页面刷新等）。failed 卡的 error_message 是引擎原文（如超 3600s 墙被取消，提示调 <code>HINDSIGHT_API_REFLECT_WALL_TIMEOUT</code>）。重试按钮当前只读（写通道未开放该端点）。</p>
+            </div>
+            <div class="card help-sec" id="h-7" data-toc="⑦ 主题与常见问题">
+              <h3>⑦ 主题与常见问题</h3>
+              <ul>
+                <li><b>主题</b>：自动（跟随系统明暗）/ 浅色 / 深色，存 localStorage <code>hsb-theme</code>；本页跨源读不到 DSH 客户端变量，自动档只跟 OS。</li>
+                <li><b>离线横幅</b>：daemon 未运行——DSH 重启后 hook 会自动拉起，轮询恢复后自动解除。</li>
+                <li><b>标签数字对不上</b>：标签 Top10 用 /tags 全库口径，记忆卡片过滤 total 是列表口径，两者本就不同。</li>
+                <li><b>页面树「陈旧」徽标</b>：is_stale=true，表示该页面内容落后于库内容，等待下一次刷新。</li>
+              </ul>
+            </div>
+            <div class="card help-sec" id="h-8" data-toc="⑧ 安全与版本">
+              <h3>⑧ 安全与版本</h3>
+              <p>API 无鉴权、仅绑 <code>127.0.0.1</code>——本机信任环境使用，<b>勿把 8888 暴露到局域网</b>。引擎回滚 = <code>uv tool install --force hindsight-api==1.2.3</code>；<b>禁止</b> <code>uv tool upgrade hindsight-embed</code>（官方新版会把 pg schema 顶上去，fork 版本回不去）。</p>
+              <p>版本：board_static fork（分支 <code>hindsight-board</code>）+ 引擎 <code>/v1/version</code> 自报（当前 1.2.3）。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       </main>
     </div>
 
     <footer class="foot">
-      <b>记忆看板 · hindsight fork board_static（分支 hindsight-board）</b> — 前端 = 本静态页（样式按 2026-11-24 界面样式稿 1:1 复刻，配色沿用 dsh-personal-workbench <code>--wb-*</code> 设计变量）；后端 = Hindsight daemon 127.0.0.1:8888（单库 · API 1.2.3）；数据全部同源 GET 直取，不经 8899、无代理层。写操作一律只读（方案 D2）。<br>
+      <b>记忆看板 · hindsight fork board_static（分支 hindsight-board）</b> — 前端 = 本静态页（样式按 2026-11-24 界面样式稿 1:1 复刻，配色沿用 dsh-personal-workbench <code>--wb-*</code> 设计变量）；后端 = Hindsight daemon 127.0.0.1:8888（单库 · API 1.2.3）；数据全部同源 GET 直取，不经 8899、无代理层。写操作仅限「设置」页签白名单字段的 PATCH（两步确认 · 快照回滚），其余一律只读。<br>
       样式稿中「对话原文气泡、召回结果卡、探活圆点」的占位示意为实时数据渲染；其余布局/徽标/页签与样式稿一致。
     </footer>
+
+    <div id="modal-backdrop" hidden>
+      <div class="modal" role="dialog" aria-modal="true">
+        <h3 id="modal-title"></h3>
+        <div id="modal-body"></div>
+        <div class="cfg-actions" style="justify-content:flex-end">
+          <button class="ghost" id="modal-cancel">取消</button>
+          <button class="ghost" id="modal-next" hidden>下一步 →</button>
+          <button class="ghost" id="modal-confirm" hidden style="border-color:var(--p0);color:var(--p0)">✔ 确认写入</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -355,6 +496,12 @@ function jget(url,to){ var c=new AbortController(); var t=setTimeout(function(){
 function jpost(url,body,to){ var c=new AbortController(); var t=setTimeout(function(){c.abort()},to||150000);
   return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:c.signal})
     .then(function(r){clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()},function(e){clearTimeout(t);throw e});}
+function jpatch(url,body,to){var c=new AbortController();var t=setTimeout(function(){c.abort()},to||30000);
+  return fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:c.signal})
+    .then(function(r){clearTimeout(t);return r.json().catch(function(){return{}}).then(function(j){
+      if(!r.ok){var d=(j&&(j.detail||j.message))||('HTTP '+r.status);if(typeof d!=='string')d=JSON.stringify(d);
+        var e=new Error(d);e.status=r.status;throw e}
+      return j})},function(e){clearTimeout(t);throw e});}
 
 var S={bank:null,banks:[],stats:null,timer:null,memPage:0,docList:[],pageSel:null,opsTimer:null};
 
@@ -364,7 +511,9 @@ var TABS=[['v-overview','总览','<rect x="2.5" y="2.5" width="4.6" height="4.6"
 ['v-docs','对话原文','<path d="M3 4.5A1.5 1.5 0 0 1 4.5 3h7A1.5 1.5 0 0 1 13 4.5v5A1.5 1.5 0 0 1 11.5 11H8l-3.5 3v-3h-.5A1.5 1.5 0 0 1 3 9.5z"/>'],
 ['v-pages','知识页面','<path d="M4 2.5h6.5L13 5v8.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"/><path d="M5.5 7.5h5M5.5 10h5"/>'],
 ['v-recall','召回测试','<circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/>'],
-['v-ops','后台队列','<path d="M2 8.5h3l1.5-4 2.5 8 1.5-5.5 1 1.5H14"/>']];
+['v-ops','后台队列','<path d="M2 8.5h3l1.5-4 2.5 8 1.5-5.5 1 1.5H14"/>'],
+['v-settings','设置','<circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6L11 5M5 11l-1.4 1.4"/>'],
+['v-help','帮助','<circle cx="8" cy="8" r="6"/><path d="M6.2 6.2a1.8 1.8 0 1 1 2.6 1.6c-.6.3-.8.7-.8 1.4"/><circle cx="8" cy="11.3" r=".6" fill="currentColor" stroke="none"/>']];
 (function(){
   var nav=$('tabs');
   TABS.forEach(function(t,i){
@@ -373,14 +522,21 @@ var TABS=[['v-overview','总览','<rect x="2.5" y="2.5" width="4.6" height="4.6"
     b.onclick=function(){switchTab(t[0])};nav.appendChild(b);
   });
 })();
-function switchTab(id){
+function switchTab(id,skipHash){
+  S.tab=id;
   document.querySelectorAll('section').forEach(function(s){s.classList.toggle('on',s.id===id)});
   document.querySelectorAll('.tabs .tb').forEach(function(b,i){b.classList.toggle('on',TABS[i][0]===id)});
   if(id==='v-memories'&&!$('memlist').childElementCount)loadMemories(0);
   if(id==='v-docs'&&!$('doclist').childElementCount)loadDocs();
   if(id==='v-pages'&&!$('pagetree').childElementCount)loadPages();
   if(id==='v-ops'&&!$('opslist').childElementCount)loadOps();
+  if(id==='v-settings'&&!S.cfgLoaded)loadSettings();
+  if(!skipHash){try{var h='#'+id;if(location.hash!==h)location.hash=h}catch(e){}}
 }
+window.addEventListener('hashchange',function(){
+  var id=(location.hash||'').replace(/^#/,'');
+  if(id&&id!==S.tab&&TABS.some(function(t){return t[0]===id}))switchTab(id,true);
+});
 
 /* ───────────── 离线态 ───────────── */
 function setOffline(on,msg){
@@ -388,6 +544,8 @@ function setOffline(on,msg){
   var p=$('hpill');
   p.classList.toggle('bad',on);
   p.innerHTML='<i></i>'+(on?esc(msg||'503 · ECONNREFUSED'):'healthy');
+  S.cfgOffline=on;
+  syncCfgLock();
 }
 
 /* ───────────── banks/健康/总览 ───────────── */
@@ -404,7 +562,7 @@ function loadBanks(){
     if(!S.bank&&S.banks.length)S.bank=S.banks[0].bank_id;
     if(S.bank)sel.value=S.bank;
     $('t-bank').textContent='bank '+(S.bank||'—');
-    sel.onchange=function(){S.bank=sel.value;S.epoch=(S.epoch||0)+1;S.docEp=(S.docEp||0)+1;S.pageEp=(S.pageEp||0)+1;S.memPage=0;$('memlist').innerHTML='';$('doclist').innerHTML='';$('docview').innerHTML='<div class="ph">← 选择左侧文档…</div>';$('pagetree').innerHTML='';$('pageview').innerHTML='<div class="ph">← 选择左侧页面…</div>';$('opslist').innerHTML='';$('t-bank').textContent='bank '+S.bank;boot(true)};
+    sel.onchange=function(){if(S.cfgDirtyN>0&&!window.confirm('设置页有未保存更改，切换 bank 将丢弃这些编辑（不会写入）。继续？'))return;S.bank=sel.value;S.cfgLoaded=false;S.epoch=(S.epoch||0)+1;S.docEp=(S.docEp||0)+1;S.pageEp=(S.pageEp||0)+1;S.memPage=0;$('memlist').innerHTML='';$('doclist').innerHTML='';$('docview').innerHTML='<div class="ph">← 选择左侧文档…</div>';$('pagetree').innerHTML='';$('pageview').innerHTML='<div class="ph">← 选择左侧页面…</div>';$('opslist').innerHTML='';$('t-bank').textContent='bank '+S.bank;boot(true)};
   });
 }
 function loadVitals(){
@@ -745,6 +903,242 @@ function loadOps(){
 }
 $('ops-status').onchange=loadOps;
 
+/* ───────────── 设置（白名单 PATCH · 两步确认 · 快照回滚） ───────────── */
+var CFG_FIELDS=[
+ {key:'name',label:'bank 显示名',code:'name（/banks）',card:'cfg-f-id',ctrl:'name',hint:'走 PATCH /banks/{id}，非空'},
+ {key:'retain_mission',label:'摄取 mission',code:'retain_mission',card:'cfg-f-id',ctrl:'area',hint:'指导记忆摄取取舍的使命描述'},
+ {key:'reflect_mission',label:'反思 mission',code:'reflect_mission',card:'cfg-f-id',ctrl:'area',hint:'指导归纳反思的目标描述'},
+ {key:'observations_mission',label:'观察 mission',code:'observations_mission',card:'cfg-f-id',ctrl:'area',hint:'观察蒸馏的目标描述'},
+ {key:'disposition_skepticism',label:'怀疑倾向 skepticism',code:'disposition_skepticism',card:'cfg-f-disp',ctrl:'disp',hint:'1–5 整数；null=清除本库覆盖、继承默认'},
+ {key:'disposition_literalism',label:'字面倾向 literalism',code:'disposition_literalism',card:'cfg-f-disp',ctrl:'disp',hint:'同上'},
+ {key:'disposition_empathy',label:'共情倾向 empathy',code:'disposition_empathy',card:'cfg-f-disp',ctrl:'disp',hint:'同上'},
+ {key:'enable_reranking',label:'启用重排',code:'enable_reranking',card:'cfg-f-recall',ctrl:'bool',hint:'召回结果重排序（本地模型）'},
+ {key:'enable_graph_retrieval',label:'图检索',code:'enable_graph_retrieval',card:'cfg-f-recall',ctrl:'bool',hint:'知识图谱路径召回'},
+ {key:'enable_temporal_retrieval',label:'时间检索',code:'enable_temporal_retrieval',card:'cfg-f-recall',ctrl:'bool',hint:'按时间衰减/排序'},
+ {key:'enable_text_search',label:'全文检索',code:'enable_text_search',card:'cfg-f-recall',ctrl:'bool',hint:'关键词全文召回'},
+ {key:'recall_include_chunks',label:'召回含原文块',code:'recall_include_chunks',card:'cfg-f-recall',ctrl:'bool',hint:'结果附带文档 chunk 原文'},
+ {key:'retain_extraction_mode',label:'提取模式',code:'retain_extraction_mode',card:'cfg-f-retain',ctrl:'text',hint:'当前 concise；非法值引擎 400 整批拒绝（零写入）'},
+ {key:'retain_default_strategy',label:'默认策略',code:'retain_default_strategy',card:'cfg-f-retain',ctrl:'text',hint:'留空=继承；retain_strategies 正文为插件回写区勿在此改'},
+ {key:'store_document_text',label:'保存文档原文',code:'store_document_text',card:'cfg-f-retain',ctrl:'bool',hint:'「对话原文」页签的数据来源'},
+ {key:'enable_auto_consolidation',label:'自动归纳',code:'enable_auto_consolidation',card:'cfg-f-cons',ctrl:'bool',hint:'后台自动把记忆整合成 observations'},
+ {key:'enable_observations',label:'观察蒸馏',code:'enable_observations',card:'cfg-f-cons',ctrl:'bool',hint:'知识页面/observations 的开关'},
+ {key:'entities_allow_free_form',label:'允许自由实体',code:'entities_allow_free_form',card:'cfg-f-cons',ctrl:'bool',hint:'实体抽取允许白名单外新实体'},
+ {key:'audit_log_enabled',label:'审计日志',code:'audit_log_enabled',card:'cfg-f-cons',ctrl:'bool',hint:'记录配置变更等操作便于追溯'},
+ {key:'default_timezone',label:'默认时区',code:'default_timezone',card:'cfg-f-misc',ctrl:'text',hint:'IANA 名称，如 UTC / Asia/Shanghai'},
+ {key:'mental_model_refresh_use_decision_model',label:'页面刷新走决策模型',code:'mental_model_refresh_use_decision_model',card:'cfg-f-misc',ctrl:'bool',hint:'刷新任务改用独立决策模型（服务器级配置）'},
+ {key:'mental_model_delta_use_decision_model',label:'页面增量走决策模型',code:'mental_model_delta_use_decision_model',card:'cfg-f-misc',ctrl:'bool',hint:'同上（增量更新）'},
+ {key:'reflect_use_decision_model',label:'反思走决策模型',code:'reflect_use_decision_model',card:'cfg-f-misc',ctrl:'bool',hint:'归纳反思改用决策模型'},
+ {key:'consolidation_use_decision_model',label:'归纳走决策模型',code:'consolidation_use_decision_model',card:'cfg-f-misc',ctrl:'bool',hint:'记忆归纳改用决策模型'},
+ {key:'memory_defense',label:'记忆防御开关',code:'memory_defense.enabled',card:'cfg-f-misc',ctrl:'mdbool',hint:'敏感信息脱敏规则总开关；rules 原样整对象替换'},
+ {key:'reflect_default_options',label:'反思 max_tokens',code:'reflect_default_options.max_tokens',card:'cfg-f-misc',ctrl:'omnum',hint:'整对象替换 {"reflect_default_options":{"max_tokens":N}}'}
+];
+function cfgBaseVal(f){
+  var b=S.cfgBase.cfg;
+  if(f.ctrl==='name'){var x=S.banks.filter(function(y){return y.bank_id===S.bank})[0];return (x&&x.name)||''}
+  if(f.ctrl==='mdbool')return !!(b.memory_defense&&b.memory_defense.enabled);
+  if(f.ctrl==='omnum')return (b.reflect_default_options&&b.reflect_default_options.max_tokens!=null)?b.reflect_default_options.max_tokens:null;
+  return b[f.key];
+}
+function cfgCurVal(f){
+  var c=S.cfgCtrl[f.key];if(!c)return undefined;
+  var el=c.el;
+  if(f.ctrl==='bool'||f.ctrl==='mdbool')return !!el.checked;
+  if(f.ctrl==='disp')return el.value===''?null:parseInt(el.value,10);
+  if(f.ctrl==='omnum'){var v=el.value.trim();return v===''?null:parseInt(v,10)}
+  if(f.ctrl==='area'||f.ctrl==='name')return el.value;
+  return el.value.trim()===''?null:el.value.trim();
+}
+function cfgIsDirty(f){
+  var cur=cfgCurVal(f),b=cfgBaseVal(f);
+  if(cur===undefined)return false;
+  if(f.ctrl==='bool'||f.ctrl==='mdbool')return cur!==b;
+  if(f.ctrl==='disp'||f.ctrl==='omnum')return cur!==(b==null?null:b);
+  return String(cur)!==String(b==null?'':b);
+}
+function collectUpdates(){
+  var updates={},nameDirty=false,nameVal='',n=0;
+  CFG_FIELDS.forEach(function(f){
+    if(!S.cfgCtrl[f.key]||!cfgIsDirty(f))return;
+    var cur=cfgCurVal(f);n++;
+    if(f.ctrl==='name'){nameDirty=true;nameVal=cur;return}
+    if(f.ctrl==='mdbool'){updates.memory_defense={enabled:!!cur,rules:(S.cfgBase.cfg.memory_defense&&S.cfgBase.cfg.memory_defense.rules)||[]};return}
+    if(f.ctrl==='omnum'){updates.reflect_default_options={max_tokens:cur==null?null:cur};return}
+    updates[f.key]=cur;
+  });
+  return {updates:updates,nameDirty:nameDirty,nameVal:nameVal,n:n};
+}
+function recomputeDirty(){
+  var u=collectUpdates();S.cfgDirtyN=u.n;
+  $('cfg-dirtychip').hidden=!u.n;$('cfg-dirtyn').textContent=String(u.n);
+  $('cfg-revert').hidden=!u.n;$('cfg-save').hidden=!u.n;
+  $('cfg-snap').hidden=!(S.cfgSnap&&Object.keys(S.cfgSnap).length);
+  CFG_FIELDS.forEach(function(f){var c=S.cfgCtrl[f.key];if(c)c.row.classList.toggle('dirty',cfgIsDirty(f))});
+}
+function cfgBuildRow(f){
+  var row=document.createElement('div');row.className='frow';
+  var lb=document.createElement('div');lb.className='flabel';
+  var over=(S.cfgBase.overrides&&(f.key in S.cfgBase.overrides));
+  lb.innerHTML='<b>'+esc(f.label)+'</b>'+(f.code?'<code>'+esc(f.code)+'</code>':'')+(over?'<span class="cfg-overridden">覆盖</span>':'');
+  var ct=document.createElement('div');ct.className='fctrl';
+  var base=cfgBaseVal(f),el;
+  if(f.ctrl==='bool'||f.ctrl==='mdbool'){el=document.createElement('input');el.type='checkbox';el.checked=!!base}
+  else if(f.ctrl==='disp'){el=document.createElement('select');
+    var o0=document.createElement('option');o0.value='';o0.textContent='继承默认（清除覆盖）';el.appendChild(o0);
+    for(var i=1;i<=5;i++){var o=document.createElement('option');o.value=String(i);o.textContent=String(i);el.appendChild(o)}
+    el.value=(base==null?'':String(base));
+    if(base==null)lb.innerHTML+='<span class="muted" style="font-size:10.5px">当前=继承</span>';
+  }
+  else if(f.ctrl==='omnum'){el=document.createElement('input');el.type='number';el.min='1';el.step='1';el.value=(base==null?'':String(base))}
+  else if(f.ctrl==='area'){el=document.createElement('textarea');el.value=(base==null?'':String(base))}
+  else {el=document.createElement('input');el.type='text';el.value=(base==null?'':String(base))}
+  ct.appendChild(el);
+  var hint=document.createElement('div');hint.className='fhint';hint.textContent=f.hint||'';
+  row.appendChild(lb);row.appendChild(ct);row.appendChild(hint);
+  el.addEventListener('change',recomputeDirty);el.addEventListener('input',recomputeDirty);
+  S.cfgCtrl[f.key]={el:el,row:row,f:f};
+  return row;
+}
+function renderSettings(){
+  var b=S.cfgBase,bn=S.banks.filter(function(x){return x.bank_id===S.bank})[0]||{};
+  $('cfg-meta').innerHTML='生效值 '+Object.keys(b.cfg).length+' 键 · 本库覆盖 '+Object.keys(b.overrides).length+' 项'+(bn.updated_at?' · bank 更新于 '+esc(fmtDT(bn.updated_at)):'');
+  S.cfgCtrl={};
+  ['cfg-f-id','cfg-f-recall','cfg-f-retain','cfg-f-cons','cfg-f-misc','cfg-f-disp'].forEach(function(id){$(id).innerHTML=''});
+  var covered={};
+  CFG_FIELDS.forEach(function(f){
+    if(f.ctrl==='mdbool'&&!b.cfg.memory_defense)return;
+    if(f.ctrl!=='name'&&!(f.key in b.cfg))return;
+    var box=$(f.card);if(!box)return;
+    box.appendChild(cfgBuildRow(f));covered[f.key]=1;
+  });
+  var roKeys=Object.keys(b.cfg).filter(function(k){return !covered[k]});
+  S.roKeys=roKeys;
+  $('cfg-rohint').textContent='以下 '+roKeys.length+' 键未收录进编辑白名单（retain_strategies、entity_labels 等结构化/专家级字段）——只读展示。';
+  $('cfg-foldpre').textContent=roKeys.map(function(k){var ov=(k in b.overrides)?'   ← 本库覆盖':'';return k+' = '+JSON.stringify(b.cfg[k])+ov}).join('\n');
+  $('cfg-foldbtn').textContent='▸ 展开全部只读键（'+roKeys.length+'）';
+  recomputeDirty();
+}
+function loadSettings(){
+  if(!S.bank)return;
+  var bk=S.bank;
+  $('cfg-msg').hidden=true;
+  ['cfg-f-id','cfg-f-recall','cfg-f-retain','cfg-f-cons','cfg-f-misc','cfg-f-disp'].forEach(function(id){$(id).innerHTML='<div class="muted">加载中…</div>'});
+  jget('/v1/version',8000).then(function(v){
+    if(S.bank!==bk)return;
+    S.cfgGate=!(v&&v.features&&v.features.bank_config_api);
+    syncCfgLock();
+    return jget(base()+'/config').then(function(c){
+      if(S.bank!==bk)return;
+      S.cfgBase={cfg:c.config||{},overrides:c.overrides||{}};
+      S.cfgSnap=JSON.parse(JSON.stringify(S.cfgBase.overrides));
+      renderSettings();
+    });
+  }).catch(function(e){
+    if(S.bank!==bk)return;
+    $('cfg-meta').textContent='加载失败';
+    $('cfg-f-id').innerHTML='<div class="ph">配置加载失败：'+esc(e.message||e)+'</div>';
+    ['cfg-f-recall','cfg-f-retain','cfg-f-cons','cfg-f-misc','cfg-f-disp'].forEach(function(id){$(id).innerHTML=''});
+  });
+}
+function syncCfgLock(){
+  var el=$('v-settings');if(!el)return;
+  el.classList.toggle('cfg-off',!!(S.cfgGate||S.cfgOffline||S.cfgBusy));
+}
+function cfgMsg(t,cls){var m=$('cfg-msg');m.hidden=false;m.className='cfg-msg '+(cls||'');m.textContent=t}
+function openModal(title,bodyHtml){
+  $('modal-title').textContent=title;$('modal-body').innerHTML=bodyHtml;
+  $('modal-backdrop').hidden=false;
+  $('modal-next').hidden=true;$('modal-confirm').hidden=true;$('modal-confirm').disabled=false;
+  $('modal-cancel').textContent='取消';
+}
+function closeModal(){
+  $('modal-backdrop').hidden=true;
+  if(S.mdTimer){clearInterval(S.mdTimer);S.mdTimer=null}
+  S.mdAction=null;
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('modal-backdrop').hidden)closeModal()});
+function cfgDiffRows(u){
+  var rows='';
+  CFG_FIELDS.forEach(function(f){
+    if(!S.cfgCtrl[f.key]||!cfgIsDirty(f))return;
+    var o=cfgBaseVal(f),nv=cfgCurVal(f);
+    var os=(o==null?'(null/继承)':(typeof o==='object'?JSON.stringify(o):String(o)));
+    var ns=(nv==null?'(null/继承)':(typeof nv==='object'?JSON.stringify(nv):String(nv)));
+    rows+='<div class="diffrow"><span class="dk">'+esc(f.code||f.key)+'</span><span class="dold">'+esc(trunc(os,160))+'</span><span class="dnew">'+esc(trunc(ns,160))+'</span></div>';
+  });
+  return rows||'<div class="muted">无字段级更改</div>';
+}
+function cfgSaveModal(){
+  var u=collectUpdates();
+  if(!u.n&&!u.nameDirty){cfgMsg('没有需要保存的更改');return}
+  if(u.nameDirty&&!String(u.nameVal).trim()){cfgMsg('bank 显示名不能为空','err');return}
+  var extra=u.nameDirty?'<div class="diffrow"><span class="dk">name（PATCH /banks）</span><span class="dold">'+esc(trunc(String(cfgBaseVal({key:'name',ctrl:'name'})||''),80))+'</span><span class="dnew">'+esc(trunc(String(u.nameVal),80))+'</span></div>':'';
+  openModal('确认写入 bank 配置（1/2）','<div class="muted" style="margin-bottom:8px">以下更改将以 PATCH {updates} 部分提交（merge · 整批原子 · 热生效）：</div>'+cfgDiffRows(u)+extra);
+  $('modal-next').hidden=false;
+  S.mdAction={type:'save',u:u};
+}
+function cfgModalStep2(){
+  var a=S.mdAction;if(!a)return;
+  $('modal-title').textContent=(a.type==='save'?'确认写入（2/2）':'确认回滚（2/2）');
+  $('modal-body').innerHTML='<div class="muted">写入立即生效，影响 daemon 后续摄取/归纳/召回行为（直写本库配置）。</div>';
+  var btn=$('modal-confirm');btn.hidden=false;btn.disabled=true;var n=3;
+  btn.textContent='请稍候 '+n+'s…';
+  if(S.mdTimer)clearInterval(S.mdTimer);
+  S.mdTimer=setInterval(function(){n--;if(n<=0){clearInterval(S.mdTimer);S.mdTimer=null;btn.disabled=false;btn.textContent=a.type==='save'?'✔ 确认写入':'✔ 确认回滚'}else btn.textContent='请稍候 '+n+'s…'},1000);
+  $('modal-next').hidden=true;$('modal-cancel').textContent='返回修改';
+}
+$('modal-next').onclick=cfgModalStep2;
+$('modal-cancel').onclick=closeModal;
+$('modal-confirm').onclick=function(){var a=S.mdAction;closeModal();if(!a)return;if(a.type==='save')doSave(a.u);else doRestore()};
+function doSave(u){
+  if(!Object.keys(u.updates).length&&!u.nameDirty){cfgMsg('没有需要保存的更改');return}
+  S.cfgBusy=true;syncCfgLock();
+  var done=function(){S.cfgBusy=false;syncCfgLock()};
+  var chain=Promise.resolve();
+  if(Object.keys(u.updates).length){
+    chain=chain.then(function(){return jpatch(base()+'/config',{updates:u.updates})}).then(function(resp){
+      S.cfgBase={cfg:resp.config||S.cfgBase.cfg,overrides:resp.overrides||{}};
+      S.cfgSnap=JSON.parse(JSON.stringify(S.cfgBase.overrides));
+    });
+  }
+  if(u.nameDirty)chain=chain.then(function(){return jpatch(base(),{name:u.nameVal})}).then(function(){return loadBanks()});
+  chain.then(function(){done();renderSettings();cfgMsg('已保存 '+u.n+' 项更改（热生效，无需重启）','ok')})
+    .catch(function(e){done();recomputeDirty();cfgMsg('保存失败（整批未写入）：'+(e.message||e),'err')});
+}
+function cfgRestoreModal(){
+  var keys=Object.keys(S.cfgSnap||{});
+  if(!keys.length){cfgMsg('快照为空（最近一次保存时无本库覆盖项）');return}
+  openModal('回滚到最近保存（1/2）','<div class="muted" style="margin-bottom:8px">将把以下 '+keys.length+' 项覆盖整包恢复为最近保存的值（PATCH merge；未列出的键不动）：</div><div class="diffrow"><span class="dk">'+esc(keys.join(' · '))+'</span></div>');
+  $('modal-next').hidden=false;
+  S.mdAction={type:'restore'};
+}
+function doRestore(){
+  var snap=S.cfgSnap||{},keys=Object.keys(snap);
+  if(!keys.length){cfgMsg('快照为空');return}
+  S.cfgBusy=true;syncCfgLock();
+  jpatch(base()+'/config',{updates:JSON.parse(JSON.stringify(snap))}).then(function(resp){
+    S.cfgBase={cfg:resp.config||S.cfgBase.cfg,overrides:resp.overrides||{}};
+    S.cfgSnap=JSON.parse(JSON.stringify(S.cfgBase.overrides));
+    S.cfgBusy=false;syncCfgLock();renderSettings();cfgMsg('已回滚到最近保存状态（'+keys.length+' 项覆盖）','ok');
+  }).catch(function(e){S.cfgBusy=false;syncCfgLock();recomputeDirty();cfgMsg('回滚失败（未写入）：'+(e.message||e),'err')});
+}
+$('cfg-save').onclick=cfgSaveModal;
+$('cfg-reload').onclick=function(){loadSettings()};
+$('cfg-revert').onclick=function(){renderSettings();cfgMsg('已放弃未保存的编辑（服务器未变）')};
+$('cfg-snap').onclick=cfgRestoreModal;
+$('cfg-foldbtn').onclick=function(){var p=$('cfg-foldpre');p.hidden=!p.hidden;var n=(S.roKeys||[]).length;this.textContent=(p.hidden?'▸':'▾')+' 展开全部只读键（'+n+'）'};
+(function(){
+  var toc=$('help-toc');if(!toc)return;
+  var items=document.querySelectorAll('#help-body .help-sec');
+  Array.prototype.forEach.call(items,function(sec){
+    var t=sec.getAttribute('data-toc')||(sec.querySelector('h3')?sec.querySelector('h3').textContent:'');
+    var b=document.createElement('button');b.textContent=t;
+    b.onclick=function(){sec.scrollIntoView({behavior:'smooth',block:'start'});
+      Array.prototype.forEach.call(toc.children,function(x){x.classList.remove('on')});
+      b.classList.add('on')};
+    toc.appendChild(b);
+  });
+})();
+
 /* ───────────── 启动/轮询 ───────────── */
 function boot(skipBanks){
   return (skipBanks?Promise.resolve():loadBanks()).then(function(){return loadVitals()}).then(function(){probeLan()})
@@ -783,6 +1177,8 @@ if(window.matchMedia){
 }
 applyTheme();
 S.timer=setInterval(function(){loadVitals()},30000);
+(function(){var id=(location.hash||'').replace(/^#/,'');if(id&&TABS.some(function(t){return t[0]===id}))switchTab(id,true)})();
+window.addEventListener('beforeunload',function(e){if(S.cfgDirtyN>0){e.preventDefault();e.returnValue=''}});
 boot();
 </script>
 </body>
