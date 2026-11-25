@@ -618,7 +618,16 @@ function loadPages(){
   jget(base()+'/pages/tree').then(function(d){
     var nodes=flatNodes(d&&(d.roots||d.pages));
     var all=$('btn-export-all');
-    all.href=base()+'/pages/export';
+    all.onclick=function(ev){
+      ev.preventDefault();
+      all.textContent='… 打包中';
+      jget('/pages/export',120000).then(function(exp){
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(new Blob([JSON.stringify(exp,null,2)],{type:'application/json'}));
+        a.download='hindsight-pages-export.json';
+        document.body.appendChild(a);a.click();a.remove();
+      },function(){}).then(function(){all.textContent='⬇ 导出全部页面（GET /pages/export）'});
+    };
     $('pagetree').innerHTML=nodes.map(function(n,i){
       return '<div class="node" data-i="'+i+'">📄 '+esc(n.name||n.id)+(n.is_stale?' <span class="stale">陈旧</span>':'')+'</div>';
     }).join('')||'<div class="ph">无页面</div>';
