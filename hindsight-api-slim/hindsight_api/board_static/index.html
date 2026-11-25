@@ -245,7 +245,7 @@ footer.foot b{color:var(--ink2)}
       <section id="v-memories">
         <div class="filter">
           <select id="f-type"><option value="">类型：全部</option><option value="world">world</option><option value="experience">experience</option><option value="observation">observation</option></select>
-          <select id="f-state"><option value="">状态：全部</option><option value="valid">有效</option><option value="invalid">已失效</option></select>
+          <select id="f-state"><option value="">状态：全部</option><option value="valid">有效</option><option value="invalidated">已失效</option></select>
           <span id="f-tags"></span>
           <select id="f-time"><option value="">时间：全部</option><option value="7">近 7 天</option><option value="30">近 30 天</option></select>
           <input id="f-q" placeholder="关键词（q）…">
@@ -277,10 +277,10 @@ footer.foot b{color:var(--ink2)}
             <div class="tree" id="pagetree"></div>
             <a id="btn-export-all" class="ghost" style="display:inline-block;margin-top:10px;text-decoration:none" href="#">⬇ 导出全部页面（GET /pages/export）</a>
             <a id="btn-export-one" class="ghost" style="display:none;margin-top:10px;text-decoration:none" href="#">⬇ 导出本页 .md</a>
-            <div class="muted" style="margin-top:8px;font-size:11.5px">GET /pages/tree · GET /pages/tree/{page_id}/export</div>
+            <div class="muted" style="margin-top:8px;font-size:11.5px">GET /pages/tree · GET /pages/{page_id} · GET /pages/export</div>
           </div>
           <div class="right" id="pageview">
-            <div class="ph">← 选择左侧页面加载正文（markdown 原文渲染；「陈旧」徽标 = is_stale + last_refreshed_at，为 P1 借鉴上游 control-plane staleness-badge 的新增信号）</div>
+            <div class="ph">← 选择左侧页面加载正文（markdown 原文渲染；「陈旧」徽标 = is_stale，借鉴上游 control-plane staleness-badge；API 未提供刷新时间戳）</div>
           </div>
         </div>
       </section>
@@ -292,7 +292,7 @@ footer.foot b{color:var(--ink2)}
           <textarea id="recall-q">多智能体统一记忆与编排 的当前结论是什么</textarea>
           <div class="recall-opts">
             <span>预算档：</span>
-            <label><input type="radio" name="rb" value="low" checked> low（实测可达 51.4s）</label>
+            <label><input type="radio" name="rb" value="low" checked> low（实测 40–110s）</label>
             <label><input type="radio" name="rb" value="mid"> mid</label>
             <label><input type="radio" name="rb" value="high"> high</label>
             <label><input type="checkbox" id="recall-trace" checked> trace 检索轨迹</label>
@@ -405,14 +405,14 @@ function loadBanks(){
   });
 }
 function loadVitals(){
-  var b=base();
+  var b=base(),vf=0;
   return jget('/health',6000).then(function(h){
     setOffline(false);
     $('hpill').innerHTML='<i></i>'+esc((h.status||'healthy')+' · db '+(h.db_acquire_ms!=null?h.db_acquire_ms:'—')+'ms · 池 '+(h.db_pool_in_use!=null?h.db_pool_in_use:'—')+'/'+(h.db_pool_idle!=null?h.db_pool_idle:'—')+'/'+(h.db_pool_max!=null?h.db_pool_max:'—'));
     $('hpill').title='连接池：占用/空闲/上限；db_acquire_ms=从池取连接耗时（慢=池耗尽）';
-  },function(e){ setOffline(true,'503 · '+(e&&e.name==='AbortError'?'timeout':'ECONNREFUSED')); return null; })
+  },function(e){ setOffline(true,'连接失败 · '+(e&&e.name==='AbortError'?'超时':'拒绝/不可达')); vf++; return null; })
   .then(function(){
-    if(!S.bank)return;
+    if(!S.bank||$('hpill').classList.contains('bad'))return;
     return jget(b+'/stats').then(function(st){
       S.stats=st;
       $('s-nodes').textContent=fmt(st.total_nodes);
@@ -438,7 +438,7 @@ function loadVitals(){
       $('q-total').textContent=fmt(obTotal);
     }).catch(function(){});
   }).then(function(){
-    return jget(b+'/stats/memories-timeseries').then(function(ts){renderTS(ts)},function(){});
+    return jget(b+'/stats/memories-timeseries').then(function(ts){renderTS(ts)},function(){vf++});
   }).then(function(){
     return jget(b+'/tags').then(function(tg){
       var items=(tg&&(tg.items||tg.tags))||[];
@@ -446,16 +446,16 @@ function loadVitals(){
       $('tagtotal').textContent='· 共 '+fmt(items.length)+' 个标签（GET /tags）';
       renderTags(items.slice(0,10),items.length?items[0].count:1);
       renderFilterChips(items.slice(0,12));
-    },function(){});
+    },function(){vf++});
   }).then(function(){
-    $('upd').textContent='更新于 '+new Date().toTimeString().slice(0,8);
+    $('upd').textContent='更新于 '+new Date().toTimeString().slice(0,8)+(vf?' · '+vf+' 项请求失败':'');
   });
 }
 function renderTS(ts){
   var buckets=(ts&&ts.buckets)||[];
   var TS=buckets.map(function(d){
     var lab=String(d.time||'');
-    lab=lab.length>=10?lab.slice(5,10).replace('-','/'):lab;
+    lab=lab.length>=10?lab.slice(5,10):lab;
     return [lab,d.world||0,d.experience||0,d.observation||0];
   });
   if(!TS.length){$('tschart').innerHTML='<div class="muted">时序数据为空</div>';return}
@@ -494,16 +494,16 @@ function renderFilterChips(items){
 }
 
 /* ───────────── 局域网探活 ───────────── */
-var LAN=[['Qwen3.6 提取',11438],['Laya 决策',11440],['Embed',11435],['Rerank',11439],['Status',9091]];
+var LAN=[['Qwen3.6 提取',11438,'192.168.1.14'],['Laya 决策',11440,'192.168.1.14'],['Embed',11435,'192.168.1.14'],['Rerank',11439,'192.168.1.14'],['Status',9091,'127.0.0.1']];
 function probeLan(){
   var host=$('lan');host.innerHTML='';
   LAN.forEach(function(s){
     var el=document.createElement('div');el.className='svc';
-    el.innerHTML='<span class="dot" style="background:var(--ink3);box-shadow:none"></span>'+esc(s[0])+' · '+s[1];
+    el.innerHTML='<span class="dot" style="background:var(--ink3);box-shadow:none"></span>'+esc(s[0])+' · '+s[2]+':'+s[1];
     host.appendChild(el);
     var dot=el.querySelector('.dot');
     var c=new AbortController();var t=setTimeout(function(){c.abort()},3500);
-    fetch('http://127.0.0.1:'+s[1]+'/',{mode:'no-cors',signal:c.signal})
+    fetch('http://'+s[2]+':'+s[1]+'/',{mode:'no-cors',signal:c.signal})
       .then(function(){clearTimeout(t);dot.className='dot';dot.removeAttribute('style')},
         function(){clearTimeout(t);dot.className='dot down';dot.removeAttribute('style')});
   });
@@ -550,7 +550,7 @@ function renderPager(host,total,lim,page,go){
   var from=Math.max(1,page-2),to=Math.min(pages,from+4);from=Math.max(1,Math.min(from,to-4));
   if(page>0)btns.push(mk(page-1,'‹'));
   for(var p=from;p<=to;p++)btns.push(mk(p-1,null,p-1===page));
-  if(pages>to)btns.push('<span class="muted">…</span>'+mk(pages-1));
+  if(pages>to)btns.push('<span class="muted">…</span>'+mk(pages-1,String(pages)));
   if(page<pages-1)btns.push(mk(page+1,'›'));
   host.innerHTML='每页 '+lim+' · 共 '+fmt(total)+' 条 &nbsp;'+btns.join(' ');
   host.querySelectorAll('.pg').forEach(function(b){b.onclick=function(){go(+b.getAttribute('data-p'))}});
@@ -621,12 +621,12 @@ function loadPages(){
     all.onclick=function(ev){
       ev.preventDefault();
       all.textContent='… 打包中';
-      jget('/pages/export',120000).then(function(exp){
+      jget(base()+'/pages/export',120000).then(function(exp){
         var a=document.createElement('a');
         a.href=URL.createObjectURL(new Blob([JSON.stringify(exp,null,2)],{type:'application/json'}));
         a.download='hindsight-pages-export.json';
         document.body.appendChild(a);a.click();a.remove();
-      },function(){}).then(function(){all.textContent='⬇ 导出全部页面（GET /pages/export）'});
+      },function(e){all.textContent='⬇ 导出全部页面（失败：'+esc((e&&e.message)||e)+'）';setTimeout(function(){all.textContent='⬇ 导出全部页面（GET /pages/export）'},5000);});
     };
     $('pagetree').innerHTML=nodes.map(function(n,i){
       return '<div class="node" data-i="'+i+'">📄 '+esc(n.name||n.id)+(n.is_stale?' <span class="stale">陈旧</span>':'')+'</div>';
@@ -656,12 +656,12 @@ function loadPageDetail(n){
       document.body.appendChild(a);a.click();a.remove();
     }).catch(function(){alert('导出失败')});
   };
-  $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧 · 刷新于 '+fmtDT(n.last_refreshed_at)+'</span>':'')+'</h3><div class="muted">加载正文…</div></div>';
+  $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧</span>':'')+'</h3><div class="muted">加载正文…</div></div>';
   jget(base()+'/pages/'+encodeURIComponent(n.id)).then(function(d){
     var md=(d&&(d.markdown||d.body))||(typeof d==='string'?d:JSON.stringify(d,null,1));
-    $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧 · 刷新于 '+fmtDT(n.last_refreshed_at)+'</span>':'')+'</h3>'
+    $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧</span>':'')+'</h3>'
       +'<div class="pagemd">'+esc(md)+'</div>'
-      +'<div class="epi">蒸馏页本质 = mental models；刷新计划 refresh_cron 随树返回。导出：点左侧「⬇ 导出本页 .md」（浏览器端落盘）；全部页面走 <code>GET /pages/export</code></div></div>';
+      +'<div class="epi">蒸馏页本质 = mental models。导出：点左侧「⬇ 导出本页 .md」（浏览器端落盘）；全部页面走 <code>GET /pages/export</code></div></div>';
   }).catch(function(e){$('pageview').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
 }
 
@@ -669,22 +669,23 @@ function loadPageDetail(n){
 $('recall-go').onclick=function(){
   var q=$('recall-q').value.trim();
   if(!q){$('recall-q').focus();return}
+  if(S.recallBusy)return;S.recallBusy=true;
   var budget=(document.querySelector('input[name="rb"]:checked')||{}).value||'low';
   var trace=$('recall-trace').checked;
   $('recall-out').hidden=true;$('recall-prog').hidden=false;
   var t0=Date.now();
-  $('recall-progtext').textContent='召回执行中… 已 0s / 预算 '+budget+'（本地 CPU 慢，budget=low 亦可达 51.4s）';
-  S.opsTimer=setInterval(function(){
+  $('recall-progtext').textContent='召回执行中… 已 0s / 预算 '+budget+'（budget=low 实测 40–110s）';
+  clearInterval(S.opsTimer);S.opsTimer=setInterval(function(){
     $('recall-progtext').textContent='召回执行中… 已 '+Math.round((Date.now()-t0)/1000)+'s / 预算 '+budget;
   },1000);
   jpost(base()+'/memories/recall',{query:q,budget:budget,trace:trace,prefer_observations:true},150000)
   .then(function(d){
-    clearInterval(S.opsTimer);$('recall-prog').hidden=true;$('recall-out').hidden=false;
+    clearInterval(S.opsTimer);S.recallBusy=false;$('recall-prog').hidden=true;$('recall-out').hidden=false;
     var items=(d&&(d.results||d.memories||d.items))||[];
     $('recall-list').innerHTML=items.map(function(r){
-      var score=r.score!=null?r.score:(r.similarity!=null?r.similarity:null);
+      var sc=r.scores||{},score=(sc.final!=null)?sc.final:(r.score!=null?r.score:(r.similarity!=null?r.similarity:null));
       var head='<span class="badge '+badgeCls(r.fact_type||r.type)+'">'+esc(r.fact_type||r.type||'result')+'</span>';
-      if(score!=null)head+='<span class="scorebar"><i style="width:'+Math.round(score*100)+'%"></i></span><span class="muted">score '+score+'</span>';
+      if(score!=null)head+='<span class="scorebar"><i style="width:'+Math.min(100,Math.max(2,Math.round(score*100)))+'%"></i></span><span class="muted">final '+score+(sc.reranker!=null?' · rerank '+sc.reranker:'')+(sc.semantic!=null?' · sem '+sc.semantic:'')+'</span>';
       var meta=[];
       if(r.source_facts)meta.push('source_facts: '+esc(JSON.stringify(trunc(JSON.stringify(r.source_facts),120))));
       if(r.document_id)meta.push('doc: '+esc(trunc(r.document_id,24)));
@@ -695,8 +696,8 @@ $('recall-go').onclick=function(){
       $('tracefold').hidden=false;$('tracepre').textContent=JSON.stringify(d.trace,null,1).slice(0,8000);
     }else{$('tracefold').hidden=true}
   }).catch(function(e){
-    clearInterval(S.opsTimer);$('recall-prog').hidden=true;$('recall-out').hidden=false;
-    $('recall-list').innerHTML='<div class="ph">召回失败：'+esc(e.message||e)+'（长任务 150s 超时；budget=low 实测可达 51.4s）</div>';
+    clearInterval(S.opsTimer);S.recallBusy=false;$('recall-prog').hidden=true;$('recall-out').hidden=false;
+    $('recall-list').innerHTML='<div class="ph">召回失败：'+esc(e.message||e)+'（长任务 150s 超时；budget=low 实测 40–110s）</div>';
   });
 };
 $('tracefold').onclick=function(){this.classList.toggle('open')};
@@ -730,7 +731,8 @@ $('ops-status').onchange=loadOps;
 
 /* ───────────── 启动/轮询 ───────────── */
 function boot(skipBanks){
-  return (skipBanks?Promise.resolve():loadBanks()).then(function(){return loadVitals()}).then(function(){probeLan()});
+  return (skipBanks?Promise.resolve():loadBanks()).then(function(){return loadVitals()}).then(function(){probeLan()})
+    .catch(function(e){setOffline(true,'连接失败 · '+esc(String((e&&e.message)||e)))});
 }
 $('btn-refresh').onclick=function(){loadVitals();probeLan()};
 $('autoref').onchange=function(e){
