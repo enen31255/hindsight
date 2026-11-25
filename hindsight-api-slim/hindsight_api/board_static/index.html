@@ -635,7 +635,7 @@ button.dis{opacity:.45;cursor:not-allowed}
 'use strict';
 /* ───────────── 基础工具 ───────────── */
 function $(id){return document.getElementById(id)}
-function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function fmt(n){return (typeof n==='number')?n.toLocaleString('en-US'):String(n==null?'—':n)}
 function fmtDT(iso){ if(!iso) return '—';
   var d=new Date(iso); if(isNaN(d)) return esc(String(iso));
@@ -643,6 +643,9 @@ function fmtDT(iso){ if(!iso) return '—';
   return (d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
 }
 function trunc(s,n){s=String(s==null?'':s);return s.length>n?s.slice(0,n)+'…':s}
+function fallbackCopy(t){
+  try{var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();var ok=document.execCommand('copy');ta.remove();return !!ok}catch(e){return false}
+}
 function jget(url,to){ var c=new AbortController(); var t=setTimeout(function(){c.abort()},to||10000);
   return fetch(url,{signal:c.signal}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()},
     function(e){clearTimeout(t);throw e});}
@@ -677,6 +680,7 @@ document.querySelectorAll('.navitem').forEach(function(b){
   b.addEventListener('click',function(){switchTab(b.getAttribute('data-v'))});
 });
 function switchTab(id,skipHash){
+  id=String(id||'').replace(/^v-/,'');
   S.tab=id;
   document.querySelectorAll('.navitem').forEach(function(x){x.classList.toggle('active',x.getAttribute('data-v')===id)});
   document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('on',v.id==='v-'+id)});
@@ -720,6 +724,8 @@ function loadBanks(){
     sel.onchange=function(){
       if(S.cfgDirtyN>0&&!window.confirm('设置页有未保存更改，切换 bank 将丢弃这些编辑（不会写入）。继续？')){sel.value=S.bank;return}
       S.bank=sel.value;
+      var bn2=S.banks.filter(function(y){return y.bank_id===S.bank})[0]||{};
+      $('bank-mission').textContent=trunc(bn2.mission||'（bank 未提供 mission 描述）',160);
       S.loaded={};S.cfgLoaded=false;S.memEntity=null;S.memDoc=null;S.obsTag=null;S.pagesCache=null;
       S.memPage=0;S.obsPage=0;
       ['memlist','doclist','obs-list','opslist'].forEach(function(id){$(id).innerHTML=''});
@@ -909,11 +915,12 @@ function renderExtras(){
 function loadMemories(page){
   if(!S.bank)return;
   var bk=S.bank;
+  var ep=(S.memEp=(S.memEp||0)+1);
   S.memPage=page;
   var lim=20,off=page*lim;
   $('memlist').innerHTML='<div class="muted">加载中…</div>';
   jget(base()+'/memories/list?limit='+lim+'&offset='+off+memFilters()).then(function(d){
-    if(S.bank!==bk)return;
+    if(S.bank!==bk||ep!==S.memEp)return;
     var items=(d&&d.items)||[],total=(d&&d.total)||0;
     $('mem-cnt').textContent='本次返回 '+items.length+' 条 · 共 '+fmt(total)+' 条';
     $('memlist').innerHTML=items.map(function(m,i){
@@ -927,7 +934,7 @@ function loadMemories(page){
         +'<span class="b '+stateCls(m.state)+'">'+esc(m.state||'valid')+'</span>'+tags+'</div>'
         +'<div class="tx">'+esc(trunc(m.text,240))+'</div>'
         +'<div class="mm"><span class="meta">'+meta.join(' · ')+'</span></div></button>';
-    }).join('')||'<div class="ph">无匹配记忆</div>';
+    }).join('')||('<div class="ph">无匹配记忆'+($('f-q').value.trim().indexOf(' ')>=0?'<br><span class="muted">提示：引擎对多词按整短语匹配——试试只用一个关键词。</span>':'')+'</div>');
     S.memItems=items;
     document.querySelectorAll('#memlist .mitem').forEach(function(el){
       el.onclick=function(){
@@ -962,13 +969,13 @@ function showMemDetail(m){
       +(sm.length>2?(' 等 '+sm.length+' 条'):'')+' → 跳检索详情';
   }
   $('memdetail').innerHTML=
-    '<div class="mm" style="margin-bottom:10px"><span class="b '+badgeCls(m.fact_type)+'">'+esc(m.fact_type||'—')+'</span>'
+    '<div class="mm" style="margin-bottom:10px"><span class="b '+badgeCls(m.fact_type||m.type)+'">'+esc(m.fact_type||m.type||'—')+'</span>'
     +'<span class="b '+stateCls(m.state)+'">'+esc(m.state||'valid')+'</span>'+(m.proof_count>1?'<span class="b b-hit">血缘 ×'+m.proof_count+'</span>':'')+tags+'</div>'
     +'<h3>'+esc(m.text)+'</h3>'
     +(m.context?'<div class="meta" style="line-height:1.7">上下文：'+esc(m.context)+'</div>':'')
     +'<div class="refcard">'
     +'<div class="rrow"><span>节点 ID</span><code>'+esc(m.id)+'</code></div>'
-    +'<div class="rrow"><span>类型</span><code>'+esc(m.fact_type||'—')+' · state='+esc(m.state||'valid')+'</code></div>'
+    +'<div class="rrow"><span>类型</span><code>'+esc(m.fact_type||m.type||'—')+' · state='+esc(m.state||'valid')+'</code></div>'
     +'<div class="rrow"><span>来源文档</span><code>'+doc+'</code></div>'
     +'<div class="rrow"><span>血缘</span><code>'+blood+'</code></div>'
     +'<button class="copybtn" data-act="copyref" data-arg="'+esc(m.id)+'">📋 复制精确引用</button>'
@@ -977,8 +984,9 @@ function showMemDetail(m){
     +'<div class="evrow"><span class="et">ID 全长</span><span class="mono">'+esc(m.id)+'</span></div>'
     +'<div class="evrow"><span class="et">证明数</span><span>proof ×'+(m.proof_count!=null?m.proof_count:'—')+' · 记录于 '+fmtDT(m.date)+'</span></div>'
     +'<div class="evrow"><span class="et">事件</span><span id="md-hist">查询中…（/memories/{id}/history；多数记忆无合并历史）</span></div>';
-  S.memHist=null;
+  S.memHist=null;S.memCur=m.id;
   if(m.id)jget(base()+'/memories/'+encodeURIComponent(m.id)+'/history').then(function(h){
+    if(S.memCur!==m.id)return;
     S.memHist=h;
     var el=$('md-hist');if(!el)return;
     if(!h||!h.length){el.textContent='无事件（该记忆无合并历史）'}
@@ -991,9 +999,10 @@ $('memdetail').addEventListener('click',function(ev){
   if(act==='copyref'){
     var m=null;(S.memItems||[]).forEach(function(x){if(x.id===arg)m=x});
     var txt=m?(m.id+'\n'+m.text+'\n来源: '+(m.document_id||'')):arg;
-    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt);
-    el.textContent='✔ 已复制';
-    setTimeout(function(){el.textContent='📋 复制精确引用'},2000);
+    var done=function(ok){el.textContent=ok?'✔ 已复制':'⚠ 复制失败（浏览器拒绝剪贴板权限）——请手动选中复制';if(ok)setTimeout(function(){el.textContent='📋 复制精确引用'},2000)};
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){done(true)},function(){done(fallbackCopy(txt))});
+    }else done(fallbackCopy(txt));
   }
   if(act==='jdoc')jumpDoc(arg);
   if(act==='jmem')jumpMem(arg);
@@ -1043,6 +1052,7 @@ function renderObsChips(){
 function loadObs(page){
   if(!S.bank)return;
   var bk=S.bank;
+  var ep=(S.obsEp=(S.obsEp||0)+1);
   S.obsPage=page;
   var lim=20,off=page*lim;
   var q=$('obs-q').value.trim();
@@ -1051,7 +1061,7 @@ function loadObs(page){
   if(q)p+='&q='+encodeURIComponent(q);
   if(S.obsTag)p+='&tags='+encodeURIComponent(S.obsTag)+'&tags_match=any';
   jget(base()+'/memories/list?'+p).then(function(d){
-    if(S.bank!==bk)return;
+    if(S.bank!==bk||ep!==S.obsEp)return;
     var items=(d&&d.items)||[],total=(d&&d.total)||0;
     if(S.scopesN==null){
       jget(base()+'/observations/scopes').then(function(sc){
@@ -1067,14 +1077,14 @@ function loadObs(page){
     });
     var html='';
     order.forEach(function(day){
-      html+='<div class="day">'+day+'</div>';
+      html+='<div class="day">'+esc(day)+'</div>';
       byDay[day].forEach(function(m){
         html+='<button class="oc" data-mid="'+esc(m.id)+'"><div class="mm"><span class="b b-obs">observation</span><span class="b '+stateCls(m.state)+'">'+esc(m.state||'valid')+'</span></div>'
           +'<div class="tx">'+esc(trunc(m.text,260))+'</div>'
           +'<div class="mm"><span class="meta">proof '+(m.proof_count!=null?m.proof_count:'—')+' · '+fmtDT(m.date)+'</span><span class="meta" style="margin-left:auto;color:var(--info)">查看引用 →</span></div></button>';
       });
     });
-    $('obs-list').innerHTML=html||'<div class="ph">无观察记录</div>';
+    $('obs-list').innerHTML=html||('<div class="ph">无观察记录'+(q.indexOf(' ')>=0?'<br><span class="muted">提示：引擎对多词按整短语匹配——试试只用一个关键词。</span>':'')+'</div>');
     S.obsItems=items;
     document.querySelectorAll('#obs-list .oc').forEach(function(el){
       el.onclick=function(){
@@ -1094,8 +1104,9 @@ $('obs-q').addEventListener('keydown',function(e){if(e.key==='Enter')loadObs(0)}
 function loadGraph(){
   if(!S.bank)return;
   var bk=S.bank;
+  var ep=(S.graphEp=(S.graphEp||0)+1);
   jget(base()+'/entities/graph?limit=50&min_count=10').then(function(d){
-    if(S.bank!==bk)return;
+    if(S.bank!==bk||ep!==S.graphEp)return;
     var nodes=(d&&d.nodes||[]).map(function(n){return n.data||n});
     var edges=(d&&d.edges||[]).map(function(e){return e.data||e});
     if(!nodes.length){$('graph-svg').innerHTML='<div class="empty"><div class="ei">༚</div>图谱为空</div>';S.loaded.graph=true;return}
@@ -1109,15 +1120,17 @@ function loadGraph(){
       pos[n.id]={x:cx+Math.cos(ang)*r,y:cy+Math.sin(ang)*r};
     });
     var svg='<svg width="100%" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">';
+    var maxW=1;edges.forEach(function(e){maxW=Math.max(maxW,e.weight||0)});
     edges.forEach(function(e){
       var a=pos[e.source],b2=pos[e.target];if(!a||!b2)return;
-      svg+='<line x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+b2.x.toFixed(1)+'" y2="'+b2.y.toFixed(1)+'" stroke="var(--line)" stroke-width="1.1" opacity=".55"/>';
+      var wgt=(e.weight||0)/maxW;
+      svg+='<line x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+b2.x.toFixed(1)+'" y2="'+b2.y.toFixed(1)+'" stroke="var(--line)" stroke-width="'+(1+wgt*1.8).toFixed(2)+'" opacity="'+(0.35+wgt*0.45).toFixed(2)+'"/>';
     });
     var maxM=1;sorted.forEach(function(n){maxM=Math.max(maxM,n.mentionCount||0)});
     sorted.forEach(function(n,i){
       var p=pos[n.id];
       var r=Math.max(6,Math.min(34,8+Math.sqrt((n.mentionCount||0)/maxM)*26));
-      var fill=(i===0)?'var(--acc)':(n.color||'rgba(52,152,219,.8)');
+      var fill=(i===0)?'var(--acc)':(/^#[0-9a-fA-F]{3,8}$/.test(n.color||'')?n.color:'rgba(52,152,219,.8)');
       svg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+fill+'" '+(i===0?'':'opacity=".88"')+' data-nid="'+esc(n.id)+'" style="cursor:pointer"/>'
         +'<text x="'+p.x.toFixed(1)+'" y="'+(p.y+r+12).toFixed(1)+'" text-anchor="middle" font-size="10" fill="var(--ink2)">'+esc(trunc(n.label||n.id,14))+(i<8?' · '+fmt(n.mentionCount||0):'')+'</text>';
     });
@@ -1134,7 +1147,7 @@ function loadGraph(){
     S.loaded.graph=true;
   }).catch(function(e){$('graph-svg').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
   jget(base()+'/entities?limit=6').then(function(d){
-    if(S.bank!==bk)return;
+    if(S.bank!==bk||ep!==S.graphEp)return;
     var items=(d&&d.items)||[];
     $('elist').innerHTML=items.map(function(e,i){
       return '<button class="eitem" data-i="'+i+'"><span>'+esc(e.canonical_name||e.id)+'</span><b>'+fmt(e.mention_count)+' 次 · since '+fmtDT(e.first_seen)+'</b></button>';
@@ -1221,7 +1234,7 @@ function loadPageDetail(n){
         var vc=$('pageview').querySelector('.vercard');if(!vc)return;
         var list=(h&&h.length)?h:[];
         if(!list.length){vc.innerHTML='<b style="font-size:13px">版本历史</b><div class="muted" style="margin-top:6px">无历史快照（该页面尚无刷新历史）</div>';return}
-        var rows='<div class="vrow"><span class="b b-cur">当前版本</span><span>'+fmtDT(n.last_refreshed_at)+'</span><button class="vbtn" data-vi="-1">查看此版本</button></div>';
+        var rows='<div class="vrow"><span class="b b-cur">当前版本</span><span>'+fmtDT(n.timestamp)+'</span><button class="vbtn" data-vi="-1">查看此版本</button></div>';
         list.forEach(function(it,i){
           rows+='<div class="vrow"><span class="vt">v'+(list.length-i)+'</span><span class="meta">快照 '+(i+1)+'/'+list.length+'</span><button class="vbtn" data-vi="'+i+'">查看此版本</button></div>';
         });
@@ -1242,10 +1255,11 @@ function loadPageDetail(n){
 function loadDocs(){
   if(!S.bank)return;
   var bk=S.bank;
+  var ep=(S.dlEp=(S.dlEp||0)+1);
   $('doclist').innerHTML='<div class="muted">加载中…</div>';
   var q=$('f-docq').value.trim();
   jget(base()+'/documents?limit=40&offset=0'+(q?'&q='+encodeURIComponent(q):'')).then(function(d){
-    if(S.bank!==bk)return;
+    if(S.bank!==bk||ep!==S.dlEp)return;
     S.docList=(d&&d.items)||[];
     $('doclist').innerHTML=S.docList.map(function(doc,i){
       var isConv=/conversation/.test(doc.id||'');
@@ -1387,10 +1401,11 @@ $('tracefold').onclick=function(){this.classList.toggle('open')};
 function loadOps(){
   if(!S.bank)return;
   var bk=S.bank;
+  var ep=(S.opsEp=(S.opsEp||0)+1);
   var st=$('ops-status').value,tp=$('ops-type').value;
   $('opslist').innerHTML='<div class="muted">加载中…</div>';
   jget(base()+'/operations?limit=30&offset=0'+(st?'&status='+encodeURIComponent(st):'')).then(function(d){
-    if(S.bank!==bk)return;
+    if(S.bank!==bk||ep!==S.opsEp)return;
     var ops=(d&&d.operations)||[];
     if(tp)ops=ops.filter(function(o){return (o.task_type||o.operation_type)===tp});
     $('opslist').innerHTML=ops.map(function(o){
@@ -1401,7 +1416,7 @@ function loadOps(){
       return '<div class="opcard'+(failed?' failed':'')+'"><div class="oh">'
         +'<span class="b '+cls+'">'+esc(o.status||'—')+'</span>'
         +'<span class="ot">'+esc(o.task_type||o.operation_type||'—')+'</span>'
-        +(o.document_id?'<span class="muted">document: '+esc(trunc(o.document_id,34))+'</span>':'')
+        +(o.document_id?'<span class="muted">document: <u class="opsdoc" data-docid="'+esc(o.document_id)+'" style="cursor:pointer;color:var(--info)">'+esc(trunc(o.document_id,34))+'</u></span>':'')
         +(o.mental_model_id?'<span class="muted">'+esc(trunc(o.mental_model_id,20))+'</span>':'')
         +'<span class="meta" style="margin-left:auto">'+fmtDT(o.updated_at||o.created_at)+(o.retry_count?(' · 重试 '+o.retry_count):'')+'</span>'
         +(failed?'<button class="btn ghost dis" title="只读（引擎未开放该写端点）">↻ 重试这条</button>':'')
@@ -1410,6 +1425,9 @@ function loadOps(){
         +(failed&&o.error_message?'<div class="errbox">'+esc(trunc(o.error_message,300))+'</div>':'')
         +'</div>';
     }).join('')||'<div class="ph">无操作记录</div>';
+    document.querySelectorAll('#opslist .opsdoc').forEach(function(u){
+      u.onclick=function(ev){ev.stopPropagation();jumpDoc(u.getAttribute('data-docid'))};
+    });
     var dist={};(d&&d.operations||[]).forEach(function(o){var k=o.task_type||o.operation_type||'—';dist[k]=(dist[k]||0)+1});
     var dk=Object.keys(dist);
     $('ops-dist').innerHTML=dk.length?('任务类型分布（近 30 条'+(st?' · 已按状态过滤':'')+'）：<b>'+dk.map(function(k){return esc(k)+' '+dist[k]}).join(' · ')+'</b>'):'';
