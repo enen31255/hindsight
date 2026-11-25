@@ -35,7 +35,7 @@ input:focus-visible,button:focus-visible,textarea:focus-visible,select:focus-vis
 .app{display:flex;flex-direction:column;height:100vh}
 
 /* ===== 顶栏 ===== */
-.topbar{height:52px;flex:none;display:flex;align-items:center;gap:14px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--line-soft)}
+.topbar{height:44px;flex:none;display:flex;align-items:center;gap:14px;padding:0 20px}
 .logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;flex:none}
 .logo .dot{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--acc),var(--acc-deep));display:flex;align-items:center;justify-content:center;font-size:12px}
 select.bankpill{font-size:12px;color:var(--ink2);background:var(--surface2);border:1px solid var(--line-soft);border-radius:999px;padding:3px 10px;font-family:var(--mono);max-width:260px;cursor:pointer}
@@ -50,8 +50,9 @@ select.bankpill{font-size:12px;color:var(--ink2);background:var(--surface2);bord
 .iconbtn{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--ink2);flex:none}
 .iconbtn:hover{background:var(--surface2);color:var(--ink1)}
 
-/* ===== 状态带（键值状态行）===== */
-.statusband{flex:none;display:flex;gap:0;padding:0 20px;height:34px;align-items:center;background:var(--surface);border-bottom:1px solid var(--line-soft);font-size:12px;color:var(--ink2);overflow-x:auto}
+/* ===== 顶栏（两行合并一块：工作条 + 状态带）===== */
+.hdr{flex:none;background:var(--surface);border-bottom:1px solid var(--line-soft)}
+.statusband{flex:none;display:flex;gap:0;padding:0 20px;height:28px;align-items:center;border-top:1px solid var(--line-soft);font-size:12px;color:var(--ink2);overflow-x:auto}
 .statusband .kv{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--line-soft);white-space:nowrap}
 .statusband .kv:last-child{border-right:none}
 .statusband b{color:var(--ink1);font-weight:600;font-family:var(--mono)}
@@ -282,6 +283,8 @@ button.dis{opacity:.45;cursor:not-allowed}
 <body>
 <div class="app">
 
+  <div class="hdr">
+
   <div class="topbar">
     <div class="logo"><span class="dot">🧠</span>记忆 · Hindsight</div>
     <select class="bankpill" id="banksel"><option>⛁ 读取 banks…</option></select>
@@ -304,6 +307,7 @@ button.dis{opacity:.45;cursor:not-allowed}
     <span class="kv">最近归纳 <b id="sb-cons">—</b></span>
     <span class="kv">更新于 <b id="upd">—</b> · 失败 <b id="updfail">0</b> 项</span>
     <span class="kv" id="sb-autoref" title="点击切换 30s 自动刷新开关（只刷总览/状态带/探活，不刷懒加载页签）">自动刷新 <b>30s ✓</b></span>
+  </div>
   </div>
   <div class="offbanner" id="offbanner" hidden>⚠ 与 :8888 daemon 失去连接（DSH 重启会带走 daemon，属设计）。hook 将在下次会话自动拉起；轮询恢复后本横幅自动解除。</div>
 
@@ -541,6 +545,12 @@ button.dis{opacity:.45;cursor:not-allowed}
         <div class="card"><div class="sect" style="margin-top:0;font-size:14px">摄取 retain</div><div id="cfg-f-retain"></div></div>
         <div class="card"><div class="sect" style="margin-top:0;font-size:14px">归纳 consolidation</div><div id="cfg-f-cons"></div></div>
         <div class="card"><div class="sect" style="margin-top:0;font-size:14px">杂项与决策模型</div><div id="cfg-f-misc"></div></div>
+        <div class="card"><div class="sect" style="margin-top:0;font-size:14px">模型服务（主聊天模型 · 提取/归纳用）</div>
+          <div class="frow"><div class="flabel"><b>当前生效</b></div><div class="fctrl" id="llm-cur"><span class="muted">加载中…</span></div><div class="fhint">GET /ui-ext/llm/current = get_config() 归一化真值；key 不回显。「已登记待重启」= HKCU 与进程内值不同。</div></div>
+          <div class="frow"><div class="flabel"><b>拉取模型列表</b><code>base_url</code></div><div class="fctrl" style="display:flex;gap:8px"><input id="llm-base" type="text" style="flex:1" placeholder="留空=用当前 base_url；如 https://api.deepseek.com/v1"><input id="llm-key" type="password" style="width:170px" placeholder="API key（可选，仅本次请求）"><button class="btn ghost" id="llm-fetch">⇩ 获取</button></div><div class="fhint">服务端代理 POST /ui-ext/llm/models → {base_url}/models（8s 超时 · 1MB 上限 · key 仅在途不落盘）</div></div>
+          <div class="frow"><div class="flabel"><b>选择主模型</b></div><div class="fctrl" style="display:flex;gap:8px"><select id="llm-model" style="flex:1"><option value="">← 先获取模型列表，或直接手填</option></select><input id="llm-model-manual" type="text" style="width:210px" placeholder="或手填模型名"><button class="btn" id="llm-apply">应用（登记 · 重启生效）</button></div><div class="fhint">写 HKCU\Environment 的 LLM_MODEL（+LLM_BASE_URL 可选）= 用户级登记；重启 DeepSeek Harness 后新进程读取生效。引擎不支持运行时热切换——不存在「立即生效」项。</div></div>
+          <div class="cfg-msg" id="llm-msg" hidden></div>
+        </div>
         <div class="card"><div class="sect" style="margin-top:0;font-size:14px">其余配置（只读 · 白名单外字段）</div><div class="muted" id="cfg-rohint"></div><button class="btn ghost" id="cfg-foldbtn" style="margin-top:8px">▸ 展开全部只读键</button><pre id="cfg-foldpre" hidden></pre></div>
         <div class="epi">数据源：GET/PATCH /v1/default/banks/{id}/config（同源直取）· PATCH 为 updates 部分提交、merge 语义、整批原子（任一字段非法整批 400 零写入）· 热生效无需重启 · 回滚=「回滚到最近保存」整包 PATCH 快照 · 凭据/LLM/端口/DB 类为服务器级字段，引擎 400 硬拒</div>
       </div>
@@ -1555,6 +1565,7 @@ function loadSettings(){
   if(!S.bank)return;
   var bk=S.bank;
   $('cfg-msg').hidden=true;
+  loadLlmCurrent();
   ['cfg-f-id','cfg-f-recall','cfg-f-retain','cfg-f-cons','cfg-f-misc','cfg-f-disp'].forEach(function(id){$(id).innerHTML='<div class="muted">加载中…</div>'});
   syncCfgLock();
   jget(base()+'/config').then(function(c){
@@ -1613,17 +1624,17 @@ function cfgSaveModal(){
 }
 function cfgModalStep2(){
   var a=S.mdAction;if(!a)return;
-  $('modal-title').textContent=(a.type==='save'?'确认写入（2/2）':'确认回滚（2/2）');
-  $('modal-body').innerHTML='<div class="muted">写入立即生效，影响 daemon 后续摄取/归纳/召回行为（直写本库配置）。</div>';
+  $('modal-title').textContent=(a.type==='save'?'确认写入（2/2）':(a.type==='llm'?'确认登记（2/2）':'确认回滚（2/2）'));
+  $('modal-body').innerHTML='<div class="muted">'+(a.type==='llm'?'登记立即写入 HKCU；当前 daemon 仍跑旧模型，重启 DeepSeek Harness 后生效。':'写入立即生效，影响 daemon 后续摄取/归纳/召回行为（直写本库配置）。')+'</div>';
   var btn=$('modal-confirm');btn.hidden=false;btn.disabled=true;var n=3;
   btn.textContent='请稍候 '+n+'s…';
   if(S.mdTimer)clearInterval(S.mdTimer);
-  S.mdTimer=setInterval(function(){n--;if(n<=0){clearInterval(S.mdTimer);S.mdTimer=null;btn.disabled=false;btn.textContent=a.type==='save'?'✔ 确认写入':'✔ 确认回滚'}else btn.textContent='请稍候 '+n+'s…'},1000);
+  S.mdTimer=setInterval(function(){n--;if(n<=0){clearInterval(S.mdTimer);S.mdTimer=null;btn.disabled=false;btn.textContent=({save:'✔ 确认写入',llm:'✔ 确认登记'})[a.type]||'✔ 确认回滚'}else btn.textContent='请稍候 '+n+'s…'},1000);
   $('modal-next').hidden=true;$('modal-cancel').textContent='返回修改';
 }
 $('modal-next').onclick=cfgModalStep2;
 $('modal-cancel').onclick=closeModal;
-$('modal-confirm').onclick=function(){var a=S.mdAction;closeModal();if(!a)return;if(a.type==='save')doSave(a.u);else doRestore()};
+$('modal-confirm').onclick=function(){var a=S.mdAction;closeModal();if(!a)return;if(a.type==='save')doSave(a.u);else if(a.type==='llm')doLlmSelect(a);else doRestore()};
 function doSave(u){
   if(!Object.keys(u.updates).length&&!u.nameDirty){cfgMsg('没有需要保存的更改');return}
   S.cfgBusy=true;syncCfgLock();
@@ -1661,6 +1672,48 @@ $('cfg-reload').onclick=function(){loadSettings()};
 $('cfg-revert').onclick=function(){renderSettings();cfgMsg('已放弃未保存的编辑（服务器未变）')};
 $('cfg-snap').onclick=cfgRestoreModal;
 $('cfg-foldbtn').onclick=function(){var p=$('cfg-foldpre');p.hidden=!p.hidden;var n=(S.roKeys||[]).length;this.textContent=(p.hidden?'▸':'▾')+' 展开全部只读键（'+n+'）'};
+
+/* ───────────── 模型服务（fork-only /ui-ext/llm/*） ───────────── */
+function llmMsg(t,cls){var m=$('llm-msg');m.hidden=false;m.className='cfg-msg '+(cls||'');m.textContent=t}
+function loadLlmCurrent(){
+  jget('/ui-ext/llm/current').then(function(d){
+    if(!$('llm-base').value&&d.base_url)$('llm-base').value=d.base_url;
+    $('llm-cur').innerHTML='<span class="b b-done">'+esc(d.provider||'—')+'</span> <code>'+esc(trunc(d.model||'—',60))+'</code>'
+      +(d.has_key?'':' <span class="b b-wait">未配置 key</span>')
+      +(d.staged_differs?' <span class="b b-run">已登记待重启：'+esc(trunc(d.staged_model,40))+'</span>':'');
+  }).catch(function(e){$('llm-cur').innerHTML='<span class="muted">读取失败：'+esc(e.message||e)+'</span>'});
+}
+$('llm-fetch').onclick=function(){
+  var btn=$('llm-fetch');btn.textContent='… 拉取中';btn.disabled=true;
+  jpost('/ui-ext/llm/models',{base_url:$('llm-base').value.trim(),key:$('llm-key').value.trim()},15000)
+  .then(function(d){
+    btn.textContent='⇩ 获取';btn.disabled=false;
+    var sel=$('llm-model');sel.innerHTML='';
+    if(!d.models||!d.models.length){sel.appendChild(new Option('（列表为空）',''));llmMsg('端点可达但未返回模型');return}
+    d.models.forEach(function(m){sel.appendChild(new Option(m,m))});
+    llmMsg('获取到 '+d.models.length+' 个模型（来自 '+d.base_url+'）','ok');
+  })
+  .catch(function(e){btn.textContent='⇩ 获取';btn.disabled=false;llmMsg('获取失败：'+(e.message||e),'err')});
+};
+$('llm-apply').onclick=function(){
+  var manual=$('llm-model-manual').value.trim();
+  var model=manual||($('llm-model').value||'').trim();
+  if(!model){llmMsg('请先获取列表或手填模型名','err');return}
+  var base=$('llm-base').value.trim();
+  openModal('登记主模型（重启生效）',
+    '<div class="diffrow"><span class="dk">LLM_MODEL</span><span class="dnew">'+esc(trunc(model,120))+'</span></div>'
+    +(base?'<div class="diffrow"><span class="dk">LLM_BASE_URL</span><span class="dnew">'+esc(trunc(base,120))+'</span></div>':'')
+    +'<div class="muted" style="margin-top:8px">写入 HKCU\\Environment（用户级登记）。当前 daemon 仍跑旧模型；重启 DeepSeek Harness 后新进程生效。API key 不在此更换（需手动 setx HINDSIGHT_API_LLM_API_KEY）。</div>');
+  $('modal-next').hidden=false;
+  S.mdAction={type:'llm',model:model,base:base};
+};
+function doLlmSelect(a){
+  jpatch('/ui-ext/llm/select',{model:a.model,base_url:a.base},30000)
+  .then(function(d){
+    llmMsg('已登记 '+(d.written?Object.keys(d.written).join(' + '):'')+' —— 重启 DeepSeek Harness 后生效。'+(d.previous&&d.previous.LLM_MODEL?('（原值：'+trunc(d.previous.LLM_MODEL,60)+'）'):''), 'ok');
+    loadLlmCurrent();
+  }).catch(function(e){llmMsg('登记失败：'+(e.message||e),'err')});
+}
 
 /* ───────────── 帮助目录 ───────────── */
 (function(){
