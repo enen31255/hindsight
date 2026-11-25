@@ -408,7 +408,8 @@ function loadVitals(){
   var b=base();
   return jget('/health',6000).then(function(h){
     setOffline(false);
-    $('hpill').innerHTML='<i></i>'+esc((h.status||'healthy')+' · db '+(h.db_acquire_ms!=null?h.db_acquire_ms:'—')+'ms · 池 '+(h.db_pool_in_use!=null?h.db_pool_in_use:'—')+'/'+(h.db_pool_max!=null?h.db_pool_max:'—'));
+    $('hpill').innerHTML='<i></i>'+esc((h.status||'healthy')+' · db '+(h.db_acquire_ms!=null?h.db_acquire_ms:'—')+'ms · 池 '+(h.db_pool_in_use!=null?h.db_pool_in_use:'—')+'/'+(h.db_pool_idle!=null?h.db_pool_idle:'—')+'/'+(h.db_pool_max!=null?h.db_pool_max:'—'));
+    $('hpill').title='连接池：占用/空闲/上限；db_acquire_ms=从池取连接耗时（慢=池耗尽）';
   },function(e){ setOffline(true,'503 · '+(e&&e.name==='AbortError'?'timeout':'ECONNREFUSED')); return null; })
   .then(function(){
     if(!S.bank)return;
@@ -428,12 +429,13 @@ function loadVitals(){
       var parts=[];
       ['entity','semantic','temporal','caused_by'].forEach(function(k){ if(lt[k]!=null)parts.push(k+' '+fmt(lt[k])) });
       $('linklegend').textContent='关联边 '+fmt(st.total_links)+(parts.length?' · '+parts.join(' / '):'');
-      // 队列 pills
+      // 队列 pills（总计=operations_by_status 全状态求和，自动涵盖 cancelled；/operations total 对账）
+      var obTotal=0;Object.keys(ob).forEach(function(k){obTotal+=ob[k]||0});
       $('q-completed').textContent=fmt(ob.completed||0);
       $('q-failed').textContent=fmt(ob.failed||0);
-      $('q-pending').textContent=fmt(st.pending_operations||0);
+      $('q-pending').textContent=fmt(ob.pending||st.pending_operations||0);
       $('q-processing').textContent=fmt(ob.processing||0);
-      $('q-total').textContent=fmt((ob.completed||0)+(ob.failed||0)+(ob.processing||0)+(st.pending_operations||0));
+      $('q-total').textContent=fmt(obTotal);
     }).catch(function(){});
   }).then(function(){
     return jget(b+'/stats/memories-timeseries').then(function(ts){renderTS(ts)},function(){});
@@ -465,11 +467,11 @@ function renderTS(ts){
       var h=Math.round(s[1]/MAX*H*10)/10;if(h<=0)return;y-=h;
       svg+='<rect x="'+x+'" y="'+y.toFixed(1)+'" width="'+W+'" height="'+h.toFixed(1)+'" rx="2" fill="'+s[0]+'"/>';
     });
-    if(d[1]+d[2]+d[3]>0)svg+='<text x="'+(x+W/2)+'" y="'+(H-8-Math.round((d[1]+d[2]+d[3])/MAX*H))+'" fill="#a9a9ad" font-size="9" text-anchor="middle">'+(d[1]+d[2]+d[3])+'</text>';
-    svg+='<text x="'+(x+W/2)+'" y="'+(H+14)+'" fill="#a9a9ad" font-size="10" text-anchor="middle">'+esc(d[0])+'</text>';
+    if(d[1]+d[2]+d[3]>0)svg+='<text x="'+(x+W/2)+'" y="'+(H-8-Math.round((d[1]+d[2]+d[3])/MAX*H))+'" fill="var(--ink2)" font-size="9" text-anchor="middle">'+(d[1]+d[2]+d[3])+'</text>';
+    svg+='<text x="'+(x+W/2)+'" y="'+(H+14)+'" fill="var(--ink2)" font-size="10" text-anchor="middle">'+esc(d[0])+'</text>';
     x+=W+G;
   });
-  svg+='<line x1="0" y1="'+H+'" x2="'+(x-G+8)+'" y2="'+H+'" stroke="rgba(127,127,127,.26)"/>';
+  svg+='<line x1="0" y1="'+H+'" x2="'+(x-G+8)+'" y2="'+H+'" stroke="var(--line)"/>';
   svg+='</svg>';$('tschart').innerHTML=svg;
 }
 function renderTags(items,max){
@@ -479,9 +481,13 @@ function renderTags(items,max){
   }).join('')||'<div class="muted">无标签</div>';
 }
 function renderFilterChips(items){
-  var host=$('f-tags');host.innerHTML='';
+  var host=$('f-tags');
+  var sel={};
+  host.querySelectorAll('.tagchip:not(.plain)').forEach(function(c){sel[c.textContent]=1});
+  host.innerHTML='';
   items.forEach(function(t){
     var c=document.createElement('span');c.className='tagchip plain';c.textContent=t.tag;
+    if(sel[t.tag])c.classList.remove('plain');
     c.onclick=function(){c.classList.toggle('plain')};
     host.appendChild(c);
   });
@@ -490,7 +496,7 @@ function renderFilterChips(items){
 /* ───────────── 局域网探活 ───────────── */
 var LAN=[['Qwen3.6 提取',11438],['Laya 决策',11440],['Embed',11435],['Rerank',11439],['Status',9091]];
 function probeLan(){
-  var host=$('lan');
+  var host=$('lan');host.innerHTML='';
   LAN.forEach(function(s){
     var el=document.createElement('div');el.className='svc';
     el.innerHTML='<span class="dot" style="background:var(--ink3);box-shadow:none"></span>'+esc(s[0])+' · '+s[1];
@@ -498,8 +504,8 @@ function probeLan(){
     var dot=el.querySelector('.dot');
     var c=new AbortController();var t=setTimeout(function(){c.abort()},3500);
     fetch('http://127.0.0.1:'+s[1]+'/',{mode:'no-cors',signal:c.signal})
-      .then(function(){clearTimeout(t);dot.className='dot'},
-        function(){clearTimeout(t);dot.className='dot down'});
+      .then(function(){clearTimeout(t);dot.className='dot';dot.removeAttribute('style')},
+        function(){clearTimeout(t);dot.className='dot down';dot.removeAttribute('style')});
   });
 }
 
