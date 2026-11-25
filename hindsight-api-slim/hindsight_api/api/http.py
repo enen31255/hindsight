@@ -4441,6 +4441,44 @@ def _stop_claiming_on_sigterm(poller: "WorkerPoller", loop: asyncio.AbstractEven
     signal.signal(signal.SIGTERM, _on_sigterm)
 
 
+class OriginAllowlistMiddleware:
+    """Fork addition (hindsight-board branch): CSRF-style Origin guard (review item S-3).
+
+    Browsers attach an ``Origin`` header to every state-changing request, so a
+    POST/PUT/PATCH/DELETE whose Origin is not allowlisted is a cross-site writer
+    and is rejected with 403. Requests without an Origin (curl, hooks, the DSH
+    plugin, MCP — none are browsers) and safe methods (GET/HEAD/OPTIONS) pass
+    untouched; the read surface is deliberately unguarded (accepted item S-4).
+    Default allowlist is the same-origin board UI on :8888, extended via
+    ``HINDSIGHT_API_ALLOWED_ORIGINS`` (comma-separated); the value ``off`` disables.
+    """
+
+    _GUARDED_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+    _DEFAULT_ORIGINS = ("http://127.0.0.1:8888", "http://localhost:8888")
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+        raw = os.environ.get("HINDSIGHT_API_ALLOWED_ORIGINS", "").strip()
+        if raw.lower() == "off":
+            self._allowed: frozenset[str] | None = None
+        else:
+            extra = [o.strip().lower().rstrip("/") for o in raw.split(",") if o.strip()]
+            self._allowed = frozenset({*self._DEFAULT_ORIGINS, *extra})
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        origin: str | None = None
+        allowed = self._allowed
+        if scope["type"] == "http" and allowed is not None and scope.get("method", "").upper() in self._GUARDED_METHODS:
+            for key, value in scope.get("headers") or []:
+                if key == b"origin":
+                    origin = value.decode("latin-1").strip().lower().rstrip("/")
+                    break
+        if origin is not None and allowed is not None and origin not in allowed:
+            await JSONResponse({"detail": "Origin not allowed"}, status_code=403)(scope, receive, send)
+            return
+        await self.app(scope, receive, send)
+
+
 def create_app(
     memory: MemoryEngine,
     initialize_memory: bool = True,
@@ -4671,6 +4709,10 @@ def create_app(
     gzip_min_size = get_config().gzip_min_size
     if gzip_min_size >= 0:
         app.add_middleware(OffloadingGZipMiddleware, minimum_size=gzip_min_size)
+
+    # Fork addition (hindsight-board branch), review item S-3: CSRF-style Origin guard.
+    # State-changing requests whose Origin is not allowlisted get 403 (see the class).
+    app.add_middleware(OriginAllowlistMiddleware)
 
     # ---------------------------------------------------------------------------
     # Patch OpenAPI schema: align ValidationError with Pydantic v2 error format
