@@ -1,406 +1,560 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>记忆 · Hindsight 看板</title>
+<title>记忆 · Hindsight 工作台</title>
 <style>
+/* ===== 设计 token（对标 PowerContext：平面材质 / 字阶层级 / 语义色字徽标）===== */
 :root{
-  --acc:#2E9B7B; --acc-deep:#14493A;
-  --acc-line:rgba(46,155,123,.38); --acc-soft:rgba(46,155,123,.12);
-  --ink1:#eeeeee; --ink2:#a9a9ad; --ink3:rgba(169,169,173,.68);
-  --surface:rgba(255,255,255,.045); --sunk:rgba(127,127,127,.08);
-  --line:rgba(127,127,127,.26); --line-soft:rgba(127,127,127,.15);
-  --r1:8px; --r2:12px;
-  --p0:#E74C3C; --p1:#F39C12; --p2:#3498DB; --p3:#95A5A6;
+  --bg:#10141a; --surface:#171c23; --surface2:#1d242d; --ink1:#e8eaee; --ink2:#9aa3ad; --ink3:#67717d;
+  --line:rgba(255,255,255,.09); --line-soft:rgba(255,255,255,.055);
+  --acc:#2E9B7B; --acc-deep:#14493A; --acc-soft:rgba(46,155,123,.13);
+  --ok:#2E9B7B; --ok-soft:rgba(46,155,123,.14); --warn:#F39C12; --warn-soft:rgba(243,156,18,.14);
+  --err:#E74C3C; --err-soft:rgba(231,76,60,.15); --info:#3498DB; --info-soft:rgba(52,152,219,.14);
   --t-world:#3498DB; --t-exp:#2E9B7B; --t-obs:#8E7CC3;
-  --bg:#141a21; --panel:#1a2129;
-  --tabs-bg:#161d26; --content-bg:#1b232d; --footer-bg:#151c24;
-  --topbar-bg:linear-gradient(90deg,rgba(46,155,123,.15),rgba(20,73,58,.10) 45%,rgba(255,255,255,.02));
-  --body-bg-color:#0f141a;
-  --body-bg-image:radial-gradient(1100px 480px at 18% -8%,rgba(46,155,123,.10),transparent 60%),radial-gradient(900px 420px at 108% 6%,rgba(52,152,219,.08),transparent 55%),linear-gradient(160deg,#131b24,#0e141b);
-  --app-bg:linear-gradient(180deg,#181f29,#141a21); --shadow:0 10px 32px rgba(0,0,0,.38);
-  --stat1-bg:rgba(46,155,123,.13); --stat1-line:rgba(46,155,123,.24);
-  --stat2-bg:rgba(52,152,219,.11); --stat2-line:rgba(52,152,219,.22);
-  --stat3-bg:rgba(142,124,195,.11); --stat3-line:rgba(142,124,195,.22);
-  --stat4-bg:rgba(255,255,255,.055); --stat4-line:var(--line-soft);
-  --bubble-u-bg:rgba(52,152,219,.12); --bubble-u-line:rgba(52,152,219,.30);
-  --bubble-a-bg:var(--surface); --bubble-a-line:var(--line-soft);
-  --bubble-t-bg:rgba(149,165,166,.10); --bubble-t-line:var(--line);
-  --banner-bg:rgba(231,76,60,.10); --banner-line:rgba(231,76,60,.35); --banner-ink:#f3b0aa;
-  --err-bg:rgba(231,76,60,.08); --err-ink:#f3b0aa;
-  --stale-bg:rgba(243,156,18,.15); --stale-ink:var(--p1);
+  --fs-page:26px; --fs-sec:18px; --fs-body:14px; --fs-meta:12px;
+  --r:10px; --space:16px;
+  --mono:ui-monospace,'Cascadia Mono',Consolas,'Courier New',monospace;
+  --stale-ink:#F39C12; --err-ink:#f2b6ae;
 }
 html[data-theme="light"]{
-  --ink1:#1f2937; --ink2:#57606d; --ink3:#8a93a0;
-  --acc-soft:rgba(46,155,123,.10); --acc-line:rgba(46,155,123,.38);
-  --surface:#ffffff; --sunk:rgba(15,23,42,.05);
-  --line:rgba(15,23,42,.16); --line-soft:rgba(15,23,42,.10);
-  --bg:#eef1f6; --panel:#fbfcfe;
-  --tabs-bg:#f1f4f8; --content-bg:#f6f8fb; --footer-bg:#eff3f7;
-  --topbar-bg:linear-gradient(90deg,rgba(46,155,123,.13),rgba(20,73,58,.05) 45%,rgba(255,255,255,.5));
-  --body-bg-color:#edf1f6;
-  --body-bg-image:radial-gradient(1100px 480px at 18% -8%,rgba(46,155,123,.12),transparent 60%),radial-gradient(900px 420px at 108% 6%,rgba(52,152,219,.10),transparent 55%),linear-gradient(160deg,#f7f9fc,#e7edf4);
-  --app-bg:linear-gradient(180deg,#ffffff,#f2f5f9); --shadow:0 8px 24px rgba(15,23,42,.10);
-  --stat1-bg:rgba(46,155,123,.12); --stat1-line:rgba(46,155,123,.25);
-  --stat2-bg:rgba(52,152,219,.12); --stat2-line:rgba(52,152,219,.25);
-  --stat3-bg:rgba(142,124,195,.13); --stat3-line:rgba(142,124,195,.25);
-  --stat4-bg:#ffffff; --stat4-line:rgba(15,23,42,.10);
-  --bubble-u-bg:rgba(52,152,219,.10); --bubble-u-line:rgba(52,152,219,.30);
-  --bubble-a-bg:#ffffff; --bubble-a-line:rgba(15,23,42,.10);
-  --bubble-t-bg:rgba(15,23,42,.045); --bubble-t-line:rgba(15,23,42,.16);
-  --banner-bg:rgba(231,76,60,.07); --banner-line:rgba(231,76,60,.35); --banner-ink:#b03a2e;
-  --err-bg:rgba(231,76,60,.06); --err-ink:#b03a2e;
-  --stale-bg:rgba(243,156,18,.16); --stale-ink:#b9770e;
-  --acc:#17795e; --acc-deep:#0f5a46;
+  --bg:#eef1f6; --surface:#ffffff; --surface2:#e8edf3; --ink1:#1f2937; --ink2:#57606d; --ink3:#8a93a0;
+  --line:rgba(15,23,42,.16); --line-soft:rgba(15,23,42,.09);
+  --acc:#17795e; --acc-deep:#0f5a46; --acc-soft:rgba(23,121,94,.11);
+  --ok:#17795e; --ok-soft:rgba(23,121,94,.12); --warn:#a56a0a; --warn-soft:rgba(165,106,10,.12);
+  --err:#c0392b; --err-soft:rgba(192,57,43,.10); --info:#2471a3; --info-soft:rgba(36,113,163,.11);
   --t-world:#2471a3; --t-exp:#17795e; --t-obs:#6a4f9e;
-  --p1:#a56a0a; --p2:#2471a3;
+  --stale-ink:#a56a0a; --err-ink:#b03a2e;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--body-bg-color);background-image:var(--body-bg-image);background-attachment:fixed;color:var(--ink1);font:14px/1.55 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:12px}
-/* ── 面板主体（布局同样式稿；生产版置于壳 iframe 内，无假侧栏/演示控制条） ── */
-.app{width:100%;height:calc(100vh - 24px);margin:0 auto;display:flex;flex-direction:column;border-radius:var(--r2);overflow:hidden;border:1px solid var(--line);background:var(--app-bg);box-shadow:var(--shadow)}
-.panel{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--panel)}
-.topbar{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid rgba(46,155,123,.22);flex-wrap:wrap;background:var(--topbar-bg)}
-.topbar .title{font-size:16.5px;font-weight:600}
-.topbar .sub{font-size:12px;color:var(--ink2);font-weight:400;margin-left:6px}
-.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12px;background:var(--acc-soft);color:var(--acc);outline:1px solid var(--acc-line)}
-.pill i{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 6px var(--acc)}
-.pill.bad{background:rgba(231,76,60,.12);color:var(--p0);outline:1px solid rgba(231,76,60,.4)}
-.pill.bad i{background:var(--p0);box-shadow:0 0 6px var(--p0)}
-.spacer{flex:1}
-.autoref{font-size:12.5px;color:var(--ink2);display:inline-flex;gap:6px;align-items:center}
-.autoref input{accent-color:var(--acc)}
-button.ghost{background:var(--surface);border:1px solid var(--line);color:var(--ink1);border-radius:var(--r1);padding:5px 12px;font-size:12.5px;cursor:pointer}
-button.ghost:hover{background:var(--sunk)}
-select.ghost{background:var(--surface);border:1px solid var(--line);color:var(--ink1);border-radius:var(--r1);padding:5px 12px;font-size:12.5px;cursor:pointer;max-width:230px}
-.upd{font-size:12px;color:var(--ink3)}
-.banner{margin:10px 18px 0;padding:9px 14px;border-radius:var(--r1);background:var(--banner-bg);border:1px solid var(--banner-line);color:var(--banner-ink);font-size:12.5px}
-.body{display:flex;flex:1;min-height:0}
-/* 页签栏 */
-.tabs{width:132px;border-right:1px solid var(--line-soft);padding:10px 8px;display:flex;flex-direction:column;gap:2px;background:var(--tabs-bg)}
-.tabs .tb{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r1);color:var(--ink2);font-size:13px;cursor:pointer;border:none;background:none;text-align:left}
-.tabs .tb svg{width:15px;height:15px;flex:none}
-.tabs .tb:hover{background:var(--surface);color:var(--ink1)}
-.tabs .tb.on{background:var(--acc-soft);color:var(--acc);font-weight:600}
-/* 内容区 */
-.content{flex:1;padding:16px 18px;overflow:auto;background:var(--content-bg)}
-section{display:none}
-section.on{display:block}
-.card{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r2);padding:14px 16px;margin-bottom:12px}
-.card h3{font-size:13px;color:var(--ink2);font-weight:600;margin-bottom:10px;letter-spacing:.4px}
+body{background:var(--bg);color:var(--ink1);font:var(--fs-body)/1.55 system-ui,-apple-system,'Segoe UI',Roboto,'Microsoft YaHei',sans-serif}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;text-align:left}
+input,textarea,select{font:inherit;color:var(--ink1);background:var(--surface2);border:1px solid var(--line);border-radius:8px;outline:none}
+input:focus-visible,button:focus-visible,textarea:focus-visible,select:focus-visible{box-shadow:0 0 0 2px var(--acc)}
+.app{display:flex;flex-direction:column;height:100vh}
+
+/* ===== 顶栏 ===== */
+.topbar{height:52px;flex:none;display:flex;align-items:center;gap:14px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--line-soft)}
+.logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;flex:none}
+.logo .dot{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--acc),var(--acc-deep));display:flex;align-items:center;justify-content:center;font-size:12px}
+select.bankpill{font-size:12px;color:var(--ink2);background:var(--surface2);border:1px solid var(--line-soft);border-radius:999px;padding:3px 10px;font-family:var(--mono);max-width:260px;cursor:pointer}
+.gsearch{flex:1;max-width:520px;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--line);border-radius:9px;padding:7px 12px;color:var(--ink3)}
+.gsearch input{flex:1;border:none;background:none;font-size:13px}
+.gsearch .kbd{font-size:11px;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--ink3);flex:none}
+.tspace{flex:1}
+.conn{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ok);flex:none}
+.conn .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.conn.bad{color:var(--err)}
+.conn.bad .dot{background:var(--err);box-shadow:0 0 6px var(--err)}
+.iconbtn{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--ink2);flex:none}
+.iconbtn:hover{background:var(--surface2);color:var(--ink1)}
+
+/* ===== 状态带（键值状态行）===== */
+.statusband{flex:none;display:flex;gap:0;padding:0 20px;height:34px;align-items:center;background:var(--surface);border-bottom:1px solid var(--line-soft);font-size:12px;color:var(--ink2);overflow-x:auto}
+.statusband .kv{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--line-soft);white-space:nowrap}
+.statusband .kv:last-child{border-right:none}
+.statusband b{color:var(--ink1);font-weight:600;font-family:var(--mono)}
+.statusband .sdot{width:7px;height:7px;border-radius:50%;background:var(--ink3);flex:none}
+.sdot.ok{background:var(--ok)} .sdot.warn{background:var(--warn)}
+#sb-autoref{cursor:pointer} #sb-autoref:hover b{color:var(--acc)}
+.offbanner{flex:none;padding:9px 20px;font-size:13px;color:var(--warn);background:var(--warn-soft);border-top:1px solid var(--line-soft)}
+
+/* ===== 主体布局 ===== */
+.layout{flex:1;display:flex;min-height:0}
+.nav{width:178px;flex:none;border-right:1px solid var(--line-soft);padding:12px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;background:var(--surface)}
+.nav .grp{font-size:11px;color:var(--ink3);letter-spacing:.08em;margin:14px 10px 5px;font-weight:600}
+.nav .grp:first-child{margin-top:2px}
+.navitem{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;color:var(--ink2);font-size:13px;position:relative;width:100%}
+.navitem:hover{background:var(--surface2);color:var(--ink1)}
+.navitem.active{background:var(--acc-soft);color:var(--ink1);font-weight:600}
+.navitem.active::before{content:'';position:absolute;left:-10px;top:6px;bottom:6px;width:3px;border-radius:2px;background:var(--acc)}
+.navitem .ico{width:16px;text-align:center;flex:none;font-size:13px}
+.nav-bottom{margin-top:auto;border-top:1px solid var(--line-soft);padding-top:8px}
+.content{flex:1;overflow-y:auto;padding:26px 30px 60px}
+
+/* ===== 页面骨架 ===== */
+.view{display:none} .view.on{display:block}
+.ptitle{font-size:var(--fs-page);font-weight:700;letter-spacing:-.01em}
+.psub{font-size:12.5px;color:var(--ink2);margin:5px 0 22px}
+.sect{font-size:var(--fs-sec);font-weight:600;margin:26px 0 12px}
+.card{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r);padding:var(--space)}
 .muted{color:var(--ink3);font-size:12px}
-.epi{font-size:11.5px;color:var(--ink3);margin-top:10px;padding-top:8px;border-top:1px dashed var(--line-soft)}
-.epi code{font-size:11px;color:var(--ink2)}
-/* stats 8 格 */
-.grid8{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.stat{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r1);padding:10px 14px}
-.stat .v{font-size:21px;font-weight:700;color:var(--ink1)}
-.stat .v.warn{color:var(--p1)}
-.stat .v.bad{color:var(--p0)}
-.stat .k{font-size:12px;color:var(--ink2);margin-top:1px}
-.stat .s{font-size:10.5px;color:var(--ink3)}
-.stat:nth-child(4n+1){background:var(--stat1-bg);border-color:var(--stat1-line)}
-.stat:nth-child(4n+2){background:var(--stat2-bg);border-color:var(--stat2-line)}
-.stat:nth-child(4n+3){background:var(--stat3-bg);border-color:var(--stat3-line)}
-.stat:nth-child(4n+4){background:var(--stat4-bg);border-color:var(--stat4-line)}
-/* 过滤条 */
-.filter{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;background:var(--sunk);padding:10px 12px;border-radius:var(--r1)}
-.filter select,.filter input{background:var(--panel);color:var(--ink1);border:1px solid var(--line);border-radius:var(--r1);padding:5px 9px;font-size:12.5px}
-.filter input{width:170px}
-.tagchip{display:inline-flex;align-items:center;gap:5px;background:var(--acc-soft);color:var(--acc);outline:1px solid var(--acc-line);border-radius:99px;padding:2px 9px;font-size:11.5px;cursor:pointer}
-.tagchip.plain{background:var(--sunk);color:var(--ink2);outline:1px solid var(--line-soft)}
-.tagchip b{opacity:.75;font-weight:400}
-/* 记忆卡 */
-.mem{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px}
-.mem .head{display:flex;gap:7px;align-items:center;margin-bottom:7px;flex-wrap:wrap}
-.mem .text{color:var(--ink1);font-size:13.5px;word-break:break-word}
-.mem .meta{margin-top:7px;font-size:11.5px;color:var(--ink3);display:flex;gap:10px;flex-wrap:wrap}
-.badge{font-size:10.5px;padding:1.5px 8px;border-radius:99px;outline:1px solid currentColor}
-.b-world{color:var(--t-world)} .b-exp{color:var(--t-exp)} .b-obs{color:var(--t-obs)}
-.b-valid{color:var(--acc)} .b-invalid{color:var(--p0)} .b-misc{color:var(--ink2)}
+.meta{font-size:var(--fs-meta);color:var(--ink2)}
+.mono{font-family:var(--mono);font-size:12px}
+.epi{font-size:11.5px;color:var(--ink3);margin-top:12px;padding-top:8px;border-top:1px dashed var(--line-soft)}
+.epi code,.muted code{font-size:11px;color:var(--ink2)}
+
+/* ===== 徽标体系：色字 + 浅底 ===== */
+.b{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;border-radius:6px;padding:2px 8px}
+.b-valid{color:var(--ok);background:var(--ok-soft)}
+.b-invalid{color:var(--err);background:var(--err-soft)}
+.b-world{color:var(--t-world);background:rgba(52,152,219,.13)}
+.b-exp{color:var(--t-exp);background:var(--ok-soft)}
+.b-obs{color:var(--t-obs);background:rgba(142,124,195,.15)}
+.b-done{color:var(--ok);background:var(--ok-soft)}
+.b-fail{color:var(--err);background:var(--err-soft)}
+.b-run{color:var(--info);background:var(--info-soft)}
+.b-wait{color:var(--warn);background:var(--warn-soft)}
+.b-stale{color:var(--warn);background:var(--warn-soft)}
+.b-cur{color:var(--info);background:var(--info-soft)}
+.b-hit{color:var(--ok);background:var(--ok-soft)}
+
+/* ===== 工作台 ===== */
+.attn{display:flex;gap:12px;flex-wrap:wrap}
+.attn .aitem{flex:1;min-width:180px;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line-soft);border-left:3px solid var(--err);border-radius:var(--r);padding:13px 15px}
+.attn .aitem.warn{border-left-color:var(--warn)}
+.attn .aitem.info{border-left-color:var(--info)}
+.attn .num{font-size:21px;font-weight:700;font-family:var(--mono)}
+.attn .go{margin-left:auto;font-size:12px;color:var(--info)}
+.attn .aitem:hover{border-color:var(--line)}
+.grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:var(--space);align-items:stretch}
+.statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.statrow .st{background:var(--surface2);border:1px solid var(--line-soft);border-radius:var(--r);padding:12px 14px}
+.statrow .st .n{font-size:20px;font-weight:700;font-family:var(--mono)}
+.statrow .st .n.warn{color:var(--warn)} .statrow .st .n.bad{color:var(--err)}
+.statrow .st .l{font-size:12px;color:var(--ink3);margin-top:2px}
+.tagchips{display:flex;flex-wrap:wrap;gap:7px}
+.tagchips .tc{font-size:12px;font-family:var(--mono);color:var(--ink2);background:var(--surface2);border-radius:6px;padding:3px 9px}
+.tc b{color:var(--ink1)}
+.tagchips .tc.sel{color:var(--acc);background:var(--acc-soft);outline:1px solid rgba(46,155,123,.4);cursor:pointer}
+.tagchips .tc.click{cursor:pointer}
+
+/* ===== 记忆检索 ===== */
+.filterbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r);padding:12px 14px;margin-bottom:10px}
+.filterbar select{padding:6px 10px;font-size:13px}
+.filterbar input{padding:6px 12px;font-size:13px;min-width:220px}
+.btn{background:var(--acc);color:#fff;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:600}
+.btn.ghost{background:none;color:var(--ink2);border:1px solid var(--line);font-weight:500}
+.btn.ghost:hover{color:var(--ink1);background:var(--surface2)}
+.transrow{font-size:12px;color:var(--ink3);margin:8px 2px 14px;display:flex;gap:14px;flex-wrap:wrap}
+.transrow b{color:var(--ink2);font-weight:500}
+.transrow u{color:var(--info);cursor:pointer;text-decoration:none;border-bottom:1px dashed var(--info)}
+.mgrid{display:grid;grid-template-columns:2fr 3fr;gap:var(--space);align-items:start}
+.cnt{font-size:12px;color:var(--ink3);margin-bottom:9px}
+.mlist{display:flex;flex-direction:column;gap:9px}
+.mitem{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r);padding:12px 14px;position:relative;width:100%}
+.mitem.sel{background:var(--acc-soft);border-color:rgba(46,155,123,.4)}
+.mitem.sel::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--acc)}
+.mitem .tx{font-size:13.5px;margin:7px 0 8px;line-height:1.5;word-break:break-word}
+.mitem .mm{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mitem:hover{border-color:var(--line)}
+.detail{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r);padding:18px 20px}
+.detail h3{font-size:15px;line-height:1.55;font-weight:600;margin-bottom:12px;word-break:break-word}
+.refcard{background:var(--info-soft);border:1px solid rgba(52,152,219,.25);border-radius:var(--r);padding:12px 14px;margin-top:14px}
+.refcard .rrow{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0}
+.refcard .rrow span{color:var(--ink2);flex:none}
+.refcard .rrow code{font-family:var(--mono);font-size:12px;color:var(--ink1);word-break:break-all;text-align:right}
+.copybtn{width:100%;margin-top:10px;background:var(--info);color:#fff;border-radius:8px;padding:8px;font-size:13px;font-weight:600}
+.evrow{display:flex;gap:10px;font-size:12.5px;padding:7px 0;border-top:1px solid var(--line-soft)}
+.evrow:first-of-type{border-top:none}
+.evrow .et{flex:none;width:88px;color:var(--ink3);font-family:var(--mono)}
 .pager{display:flex;gap:6px;align-items:center;color:var(--ink2);font-size:12.5px;margin-top:10px;flex-wrap:wrap}
 .pager .pg{padding:3px 9px;border-radius:6px;border:1px solid var(--line-soft);cursor:pointer}
-.pager .pg.on{background:var(--acc-soft);color:var(--acc);outline:1px solid var(--acc-line)}
-/* 双栏（对话/页面） */
-.duo{display:flex;gap:12px}
-.duo .left{width:305px;flex:none;display:flex;flex-direction:column;gap:8px}
-.duo .right{flex:1;min-width:0}
-.doc{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r1);padding:10px 12px;cursor:pointer}
-.doc.on{outline:1px solid var(--acc-line);background:var(--acc-soft)}
-.doc .id{font-size:12px;color:var(--ink1);word-break:break-all}
-.doc .mt{margin-top:5px;font-size:11px;color:var(--ink3);display:flex;gap:8px;flex-wrap:wrap}
-.ph{border:1.5px dashed var(--line);border-radius:var(--r2);padding:18px;color:var(--ink3);font-size:12.5px;background:var(--sunk)}
-.pagemd{white-space:pre-wrap;word-break:break-word;font-size:12.5px;color:var(--ink1);max-height:560px;overflow:auto}
-.bubble{border-radius:var(--r1);padding:9px 12px;margin-bottom:8px;font-size:12.5px;word-break:break-word}
-.bubble.user{background:var(--bubble-u-bg);outline:1px solid var(--bubble-u-line)}
-.bubble.assistant{background:var(--bubble-a-bg);outline:1px solid var(--bubble-a-line)}
-.bubble.tool{background:var(--bubble-t-bg);outline:1px dashed var(--bubble-t-line);color:var(--ink2);font-size:11.5px}
-.bubble .who{font-size:10.5px;color:var(--ink3);margin-bottom:3px}
-/* 页面树 */
-.tree{display:flex;flex-direction:column;gap:4px}
-.tree .node{padding:6px 10px;border-radius:var(--r1);font-size:12.5px;color:var(--ink1);cursor:pointer;display:flex;align-items:center;gap:7px}
-.tree .node:hover{background:var(--surface)}
-.tree .node.on{background:var(--acc-soft);color:var(--acc)}
-.stale{font-size:10px;padding:1px 7px;border-radius:99px;background:var(--stale-bg);color:var(--stale-ink);outline:1px solid rgba(243,156,18,.4)}
-/* 召回 */
-.recall-box textarea{width:100%;background:var(--panel);color:var(--ink1);border:1px solid var(--line);border-radius:var(--r1);padding:9px 12px;font-size:13px;min-height:58px;resize:vertical}
-.recall-opts{display:flex;gap:16px;align-items:center;margin-top:10px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2)}
-.recall-opts label{display:inline-flex;gap:5px;align-items:center;cursor:pointer}
-.recall-opts input{accent-color:var(--acc)}
-.progress{display:flex;align-items:center;gap:10px;background:var(--acc-soft);outline:1px solid var(--acc-line);border-radius:var(--r1);padding:9px 13px;font-size:12.5px;color:var(--acc);margin-top:12px}
-.spin{width:14px;height:14px;border:2px solid var(--acc-line);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite}
-@keyframes sp{to{transform:rotate(360deg)}}
-.scorebar{height:5px;border-radius:3px;background:var(--sunk);overflow:hidden;width:150px}
+.pager .pg.on{background:var(--acc-soft);color:var(--acc);border-color:rgba(46,155,123,.4)}
+
+/* ===== 观察流 ===== */
+.tl{display:flex;flex-direction:column;gap:14px}
+.tl .day{font-size:12px;color:var(--ink3);font-family:var(--mono);margin-bottom:-4px}
+.oc{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r);padding:13px 16px;width:100%}
+.oc .tx{font-size:13.5px;margin:6px 0 8px;line-height:1.5;word-break:break-word}
+.oc:hover{border-color:var(--line)}
+
+/* ===== 实体图谱 ===== */
+.gwrap{display:grid;grid-template-columns:2fr 1fr;gap:var(--space);align-items:stretch}
+.gsvg{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r);padding:10px}
+.elist{display:flex;flex-direction:column;gap:8px}
+.eitem{display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--line-soft);border-radius:8px;padding:9px 13px;font-size:13px;width:100%}
+.eitem b{font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.eitem:hover{border-color:var(--line)}
+
+/* ===== 知识页面（版本历史）===== */
+.pgrid{display:grid;grid-template-columns:300px 1fr;gap:var(--space);align-items:start}
+.ptree{display:flex;flex-direction:column;gap:2px}
+.pnode{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;font-size:13px;color:var(--ink2);width:100%}
+.pnode:hover{background:var(--surface2)}
+.pnode.sel{background:var(--acc-soft);color:var(--ink1);font-weight:600}
+.pnode .ind{width:14px;flex:none}
+.vercard{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r);padding:12px 16px;margin-top:16px}
+.vrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line-soft);font-size:12.5px}
+.vrow:first-of-type{border-top:none}
+.vrow .vt{font-family:var(--mono);color:var(--ink2)}
+.vrow .vbtn{margin-left:auto;font-size:12px;color:var(--info);border:1px solid var(--line);border-radius:7px;padding:4px 12px}
+.md{background:var(--surface2);border-radius:8px;padding:14px 16px;font-size:13px;color:var(--ink2);line-height:1.7;margin-top:14px;white-space:pre-wrap;max-height:520px;overflow:auto;word-break:break-word}
+
+/* ===== 证据原文 ===== */
+.dgrid{display:grid;grid-template-columns:320px 1fr;gap:var(--space);align-items:start}
+.bubwrap{position:relative;max-height:300px;overflow:hidden}
+.bubwrap.open{max-height:none;overflow:auto}
+.bub{max-width:78%;border-radius:10px;padding:9px 13px;font-size:13px;margin-bottom:9px;line-height:1.55;word-break:break-word}
+.bub.user{background:rgba(52,152,219,.16);margin-left:auto}
+.bub.assistant{background:var(--surface2)}
+.bub.tool{background:none;border:1px dashed var(--line);color:var(--ink2);font-family:var(--mono);font-size:12px;max-width:92%}
+.explabel{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:12px;color:var(--info);background:linear-gradient(transparent,var(--surface));padding:20px 0 4px;cursor:pointer}
+.bubwrap.open .explabel{position:static;padding:4px 0 0;background:none;text-align:left}
+.chunkrow{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line-soft);font-size:12.5px}
+.chunkrow:first-of-type{border-top:none}
+.chunkrow .cn{flex:none;color:var(--info);font-family:var(--mono)}
+
+/* ===== 召回实验室 ===== */
+.recbuilder{display:flex;gap:10px;align-items:flex-start}
+.recbuilder textarea{flex:1;min-height:64px;padding:10px 13px;font-size:13.5px;resize:vertical}
+.radios{display:flex;gap:6px;flex-wrap:wrap}
+.radios label{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink2);background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer}
+.radios input{accent-color:var(--acc)}
+.stepflow{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.step{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink2)}
+.step .sdot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+.step .sdot.idle{background:var(--ink3)}
+.step .sdot.run{background:var(--info);animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.scorebar{height:6px;border-radius:4px;background:var(--surface2);overflow:hidden;margin-top:8px;width:150px}
 .scorebar i{display:block;height:100%;background:var(--acc)}
 .fold{color:var(--ink3);font-size:12px;cursor:pointer;margin-top:10px}
-.fold pre{display:none;margin-top:8px;white-space:pre-wrap;word-break:break-all;font-size:11px;color:var(--ink2);max-height:320px;overflow:auto;border:1px dashed var(--line);border-radius:var(--r1);padding:10px}
+.fold pre{display:none;margin-top:8px;white-space:pre-wrap;word-break:break-all;font-size:11px;color:var(--ink2);max-height:320px;overflow:auto;border:1px dashed var(--line);border-radius:var(--r);padding:10px}
 .fold.open pre{display:block}
-/* 队列 */
-.qrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-.qpill{background:var(--surface);outline:1px solid var(--line-soft);border-radius:99px;padding:4px 13px;font-size:12.5px;color:var(--ink2)}
-.qpill b{color:var(--ink1)}
-.qpill.bad b{color:var(--p0)}
-.opcard{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r1);padding:11px 13px;margin-bottom:9px}
+.progress{display:flex;align-items:center;gap:10px;background:var(--acc-soft);border:1px solid rgba(46,155,123,.4);border-radius:var(--r);padding:9px 13px;font-size:12.5px;color:var(--acc);margin-top:12px}
+.spin{width:14px;height:14px;border:2px solid rgba(46,155,123,.4);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ===== 运行与队列 ===== */
+.opsline{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.opcard{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r);padding:13px 16px;margin-bottom:10px}
 .opcard.failed{border-color:rgba(231,76,60,.35)}
-.opcard .l1{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px}
-.opcard .err{margin-top:7px;font-size:11.5px;color:var(--err-ink);background:var(--err-bg);border-radius:6px;padding:7px 9px;word-break:break-all}
-.opcard .pr{margin-top:7px;display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--ink2)}
-.pbar{flex:1;height:6px;background:var(--sunk);border-radius:4px;overflow:hidden;min-width:80px}
-.pbar i{display:block;height:100%;background:var(--acc)}
-button.dis{opacity:.45;cursor:not-allowed}
-/* 探活卡 */
-.lan{display:flex;gap:10px;flex-wrap:wrap}
-.lan .svc{background:var(--surface);outline:1px solid var(--line-soft);border-radius:var(--r1);padding:9px 13px;font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:8px}
-.lan .dot{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 5px var(--acc)}
-.lan .dot.down{background:var(--p0);box-shadow:0 0 5px var(--p0)}
-/* 增长曲线/标签 */
-.legend{display:flex;gap:14px;font-size:11.5px;color:var(--ink2);margin-top:8px;flex-wrap:wrap}
-.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
-.trow{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:12px}
-.trow .tn{width:190px;color:var(--ink2);text-align:right;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.trow .bar{height:13px;border-radius:3px;background:var(--acc);opacity:.85}
-.trow .tc{color:var(--ink3);font-size:11.5px;width:52px}
-footer.foot{border-top:1px solid var(--line-soft);padding:10px 18px;font-size:11.5px;color:var(--ink3);line-height:1.7;background:var(--footer-bg)}
-footer.foot b{color:var(--ink2)}
-/* ── 设置（⑦）/帮助（⑧）页签 ── */
+.opcard .oh{display:flex;align-items:center;gap:9px;font-size:13px;flex-wrap:wrap}
+.opcard .oh .ot{font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.pbar{height:5px;border-radius:3px;background:var(--surface2);overflow:hidden;margin-top:9px}
+.pbar i{display:block;height:100%;background:var(--info)}
+.errbox{background:var(--err-soft);border-radius:8px;padding:9px 12px;font-size:12.5px;color:var(--err-ink);margin-top:9px;font-family:var(--mono);word-break:break-all}
+
+/* ===== 设置 ===== */
 .cfg-actions{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
-.pill.warn{background:var(--stale-bg);color:var(--stale-ink);outline:1px solid rgba(243,156,18,.4)}
-.pill.warn i{background:var(--stale-ink);box-shadow:0 0 6px var(--stale-ink)}
-.frow{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed var(--line-soft)}
-.frow:last-child{border-bottom:none}
-.frow .flabel{width:230px;flex:none;font-size:12.5px;color:var(--ink1)}
-.frow .flabel code{display:block;font-size:10.5px;color:var(--ink3);font-weight:400}
-.frow .fctrl{flex:1;min-width:0}
-.frow .fctrl input[type=text],.frow .fctrl input[type=number],.frow .fctrl select{width:100%;max-width:320px;background:var(--sunk);color:var(--ink1);border:1px solid var(--line);border-radius:var(--r1);padding:5px 9px;font-size:12.5px;font-family:inherit}
-.frow .fctrl textarea{width:100%;min-height:64px;resize:vertical;background:var(--sunk);color:var(--ink1);border:1px solid var(--line);border-radius:var(--r1);padding:8px 10px;font-size:12px;line-height:1.5;font-family:inherit}
-.frow .fctrl input[type=checkbox]{accent-color:var(--acc);width:15px;height:15px}
-.frow .fhint{width:230px;flex:none;font-size:11px;color:var(--ink3)}
-.frow.dirty .flabel::after{content:" ●";color:var(--p1)}
-.cfg-overridden{font-size:10px;padding:1px 7px;border-radius:99px;background:rgba(46,155,123,.12);color:var(--acc);outline:1px solid rgba(46,155,123,.38);margin-left:6px}
-.cfg-msg{margin-top:10px;border-radius:var(--r1);padding:8px 12px;font-size:12px;word-break:break-all}
-.cfg-msg.ok{background:rgba(46,155,123,.12);outline:1px solid rgba(46,155,123,.38);color:var(--acc)}
-.cfg-msg.err{background:var(--err-bg);color:var(--err-ink);outline:1px solid var(--banner-line)}
+.dirtychip{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--warn);background:var(--warn-soft);border-radius:999px;padding:3px 11px}
+.cfg-meta{font-size:12px;color:var(--ink2)}
+.frow{display:grid;grid-template-columns:230px 1fr 230px;gap:14px;align-items:start;padding:10px 0;border-top:1px solid var(--line-soft)}
+.frow:first-of-type{border-top:none}
+.flabel{font-size:13px;font-weight:600}
+.flabel code{display:block;font-size:10.5px;color:var(--ink3);font-weight:400;font-family:var(--mono)}
+.fctrl{min-width:0}
+.fctrl input[type=text],.fctrl input[type=number],.fctrl select{width:100%;max-width:320px;padding:6px 10px;font-size:13px}
+.fctrl textarea{width:100%;min-height:64px;resize:vertical;padding:8px 10px;font-size:12.5px;line-height:1.5}
+.fctrl input[type=checkbox]{accent-color:var(--acc);width:15px;height:15px}
+.fhint{font-size:12px;color:var(--ink3)}
+.frow.dirty .flabel::after{content:" ●";color:var(--warn)}
+.cfg-overridden{display:inline-block;font-size:10px;padding:1px 7px;border-radius:99px;background:var(--acc-soft);color:var(--acc);margin-left:6px;font-weight:600}
+.cfg-msg{margin-top:10px;border-radius:var(--r);padding:8px 12px;font-size:12px;word-break:break-all}
+.cfg-msg.ok{background:var(--ok-soft);color:var(--ok)}
+.cfg-msg.err{background:var(--err-soft);color:var(--err-ink)}
 #v-settings.cfg-off .fctrl,#v-settings.cfg-off .cfg-actions button{opacity:.45;pointer-events:none}
-#cfg-foldpre{white-space:pre-wrap;word-break:break-all;background:var(--sunk);border:1px solid var(--line-soft);border-radius:var(--r1);padding:10px;font-size:11px;color:var(--ink2);max-height:320px;overflow:auto;font-family:ui-monospace,Consolas,monospace;margin-top:8px}
+#cfg-foldpre{white-space:pre-wrap;word-break:break-all;background:var(--surface2);border:1px solid var(--line-soft);border-radius:var(--r);padding:10px;font-size:11px;color:var(--ink2);max-height:320px;overflow:auto;font-family:var(--mono);margin-top:8px}
+
+/* ===== 弹层 ===== */
 #modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:50}
 #modal-backdrop[hidden]{display:none}
-.modal{width:min(620px,92vw);max-height:82vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--shadow);padding:16px 18px}
-.modal h3{margin-bottom:10px}
+.modal{width:min(620px,92vw);max-height:82vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.modal h3{margin-bottom:10px;font-size:15px}
 .diffrow{display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line-soft);font-size:12px}
 .diffrow .dk{width:200px;flex:none;color:var(--ink2);word-break:break-all}
 .diffrow .dold{color:var(--err-ink);text-decoration:line-through;flex:1;min-width:0;word-break:break-all}
 .diffrow .dnew{color:var(--acc);flex:1;min-width:0;word-break:break-all}
-.help-toc button{display:block;width:100%;text-align:left;background:transparent;border:none;border-left:2px solid transparent;color:var(--ink2);padding:5px 10px;cursor:pointer;font-size:12.5px;font-family:inherit;border-radius:0 var(--r1) var(--r1) 0}
-.help-toc button.on{color:var(--acc);border-left-color:var(--acc);background:rgba(46,155,123,.12)}
+
+/* ===== 帮助 ===== */
+.toclist{display:flex;flex-direction:column;gap:2px}
+.toclist button{text-align:left;padding:6px 10px;border-radius:8px;font-size:13px;color:var(--ink2)}
+.toclist button.on{background:var(--acc-soft);color:var(--ink1);font-weight:600}
 .help-sec{margin-bottom:14px}
-.help-sec p,.help-sec li{font-size:12.5px;color:var(--ink2)}
+.help-sec h3{font-size:14px;margin-bottom:8px}
+.help-sec p,.help-sec li{font-size:12.5px;color:var(--ink2);line-height:1.7}
 .help-sec ul{padding-left:18px;margin:6px 0}
-.help-sec code{background:var(--sunk);border-radius:4px;padding:0 5px;font-size:11px}
+.help-sec code{background:var(--surface2);border-radius:4px;padding:0 5px;font-size:11px}
+
+/* ===== 空态 ===== */
+.empty{padding:34px 20px;text-align:center;color:var(--ink3);font-size:13px}
+.empty .ei{font-size:26px;margin-bottom:8px}
+.ph{border:1.5px dashed var(--line);border-radius:var(--r);padding:18px;color:var(--ink3);font-size:12.5px;background:var(--surface2)}
+button.dis{opacity:.45;cursor:not-allowed}
+.stale{font-size:10px;padding:1px 7px;border-radius:99px;background:var(--warn-soft);color:var(--warn-ink)}
+
+.footer{flex:none;padding:10px 20px;font-size:11.5px;color:var(--ink3);background:var(--surface);border-top:1px solid var(--line-soft);line-height:1.7}
+.footer b{color:var(--ink2)}
 </style>
 </head>
 <body>
-
 <div class="app">
-  <div class="panel">
-    <header class="topbar">
-      <div class="title">记忆 <span class="sub">Hindsight · <span id="t-bank">bank …</span></span></div>
-      <span class="pill" id="hpill"><i></i>连接中…</span>
-      <div class="spacer"></div>
-      <select class="ghost" id="banksel"><option>⛁ 读取 banks…</option></select>
-      <label class="autoref"><input type="checkbox" id="autoref" checked> 30s 自动刷新</label>
-      <button class="ghost" id="btn-refresh">⟳ 刷新</button>
-      <button class="ghost" id="theme-btn" title="自动=跟随系统主题（DSH 客户端默认跟随系统）；浅色/深色=手动固定，选择存本地">🌓 主题：自动</button>
-      <span class="upd" id="upd">—</span>
-    </header>
 
-    <div class="banner" id="offbanner" hidden>
-      daemon 离线 —— 无法连接 127.0.0.1:8888；DSH hook 将在下次会话自动拉起，面板轮询恢复后自动解除。
+  <div class="topbar">
+    <div class="logo"><span class="dot">🧠</span>记忆 · Hindsight</div>
+    <select class="bankpill" id="banksel"><option>⛁ 读取 banks…</option></select>
+    <div class="tspace" style="flex:0 0 8px"></div>
+    <div class="gsearch">🔍<input id="gq" placeholder="搜索记忆、观察、文档…（回车 → 检索页带 q）"><span class="kbd">Ctrl K</span></div>
+    <div class="tspace"></div>
+    <div class="conn" id="hpill"><span class="dot"></span><span id="conn-txt">连接中…</span></div>
+    <button class="iconbtn" id="theme-btn" title="主题三档循环：自动（跟随系统）/浅色/深色 · localStorage 持久化">🌓</button>
+    <button class="iconbtn" id="btn-refresh" title="手动刷新总览与探活">⟳</button>
+  </div>
+
+  <div class="statusband">
+    <span class="kv">兼容性 <b id="sb-ver">—</b></span>
+    <span class="kv">db 池 <b id="sb-pool">—</b></span>
+    <span class="kv"><span class="sdot" id="sb-d0"></span>提取 <b>11438</b></span>
+    <span class="kv"><span class="sdot" id="sb-d1"></span>决策 <b>11440</b></span>
+    <span class="kv"><span class="sdot" id="sb-d2"></span>Embed <b>11435</b></span>
+    <span class="kv"><span class="sdot" id="sb-d3"></span>Rerank <b>11439</b></span>
+    <span class="kv"><span class="sdot" id="sb-d4"></span>Status <b>9091</b></span>
+    <span class="kv">最近归纳 <b id="sb-cons">—</b></span>
+    <span class="kv">更新于 <b id="upd">—</b> · 失败 <b id="updfail">0</b> 项</span>
+    <span class="kv" id="sb-autoref" title="点击切换 30s 自动刷新开关（只刷总览/状态带/探活，不刷懒加载页签）">自动刷新 <b>30s ✓</b></span>
+  </div>
+  <div class="offbanner" id="offbanner" hidden>⚠ 与 :8888 daemon 失去连接（DSH 重启会带走 daemon，属设计）。hook 将在下次会话自动拉起；轮询恢复后本横幅自动解除。</div>
+
+  <div class="layout">
+    <div class="nav">
+      <div class="grp">总览</div>
+      <button class="navitem active" data-v="home"><span class="ico">◈</span>工作台</button>
+      <div class="grp">记忆</div>
+      <button class="navitem" data-v="search"><span class="ico">🔍</span>记忆检索</button>
+      <button class="navitem" data-v="obs"><span class="ico">❋</span>观察流</button>
+      <button class="navitem" data-v="graph"><span class="ico">༚</span>实体图谱</button>
+      <button class="navitem" data-v="pages"><span class="ico">📄</span>知识页面</button>
+      <div class="grp">证据</div>
+      <button class="navitem" data-v="docs"><span class="ico">💬</span>证据原文</button>
+      <div class="grp">工具</div>
+      <button class="navitem" data-v="recall"><span class="ico">⚗</span>召回实验室</button>
+      <div class="grp">运行</div>
+      <button class="navitem" data-v="ops"><span class="ico">⚙︎</span>运行与队列</button>
+      <div class="nav-bottom">
+        <button class="navitem" data-v="settings"><span class="ico">⚙</span>设置</button>
+        <button class="navitem" data-v="help"><span class="ico">?</span>帮助</button>
+      </div>
     </div>
 
-    <div class="body">
-      <nav class="tabs" id="tabs"></nav>
-      <main class="content">
+    <div class="content" id="content">
 
-      <!-- ① 总览 -->
-      <section id="v-overview" class="on">
-        <div class="grid8">
-          <div class="stat"><div class="v" id="s-nodes">—</div><div class="k">记忆卡片</div><div class="s">total_nodes</div></div>
-          <div class="stat"><div class="v" id="s-docs">—</div><div class="k">原始文档</div><div class="s">total_documents</div></div>
-          <div class="stat"><div class="v" id="s-obs">—</div><div class="k">观察</div><div class="s">observation</div></div>
-          <div class="stat"><div class="v" id="s-exp">—</div><div class="k">经验类</div><div class="s">experience</div></div>
-          <div class="stat"><div class="v" id="s-pend">—</div><div class="k">待归纳</div><div class="s">pending_consolidation</div></div>
-          <div class="stat"><div class="v warn" id="s-failed">—</div><div class="k">失败操作</div><div class="s">failed_operations</div></div>
-          <div class="stat"><div class="v" id="s-proc">—</div><div class="k">处理中</div><div class="s">processing</div></div>
-          <div class="stat"><div class="v" style="font-size:15px;padding-top:4px" id="s-lastc">—</div><div class="k">最近归纳</div><div class="s">last_consolidated_at</div></div>
+      <!-- ① 工作台 -->
+      <div class="view on" id="v-home">
+        <div class="ptitle">工作台</div>
+        <div class="psub">需要关注什么、最近沉淀了多少——一眼判断记忆体是否健康</div>
+
+        <div class="attn" style="margin-bottom:22px">
+          <button class="aitem" id="a-failed"><span class="num" style="color:var(--err)" id="n-failed">—</span><div>失败操作<div class="meta">墙超时 · 重试待定</div></div><span class="go">去队列 →</span></button>
+          <button class="aitem info" id="a-proc"><span class="num" style="color:var(--info)" id="n-proc">—</span><div>处理中<div class="meta">后台管线进行时</div></div><span class="go">去队列 →</span></button>
+          <button class="aitem warn" id="a-stale"><span class="num" style="color:var(--warn)" id="n-stale">—</span><div>陈旧知识页<div class="meta">等待下一次刷新</div></div><span class="go">去看 →</span></button>
+          <div class="aitem warn"><span class="num" style="color:var(--warn)" id="n-pend">—</span><div>待归纳<div class="meta">队列为空 = 一切已消化</div></div></div>
         </div>
 
-        <div class="card" style="margin-top:12px">
-          <h3>近 7 天记忆增长（按天 × 类型）</h3>
-          <div id="tschart"></div>
-          <div class="legend">
-            <span><i style="background:var(--t-world)"></i>world 世界事实</span>
-            <span><i style="background:var(--t-exp)"></i>experience 经验</span>
-            <span><i style="background:var(--t-obs)"></i>observation 观察</span>
-            <span class="muted" id="linklegend"></span>
+        <div class="grid2">
+          <div class="card">
+            <div class="sect" style="margin-top:0">记忆存量</div>
+            <div class="statrow">
+              <div class="st"><div class="n" id="h-nodes">—</div><div class="l">记忆节点</div></div>
+              <div class="st"><div class="n" id="h-docs">—</div><div class="l">证据文档</div></div>
+              <div class="st"><div class="n" id="h-obs">—</div><div class="l">观察</div></div>
+              <div class="st"><div class="n" id="h-links">—</div><div class="l">关联边</div></div>
+            </div>
+            <div class="statrow" style="margin-top:10px">
+              <div class="st"><div class="n" id="h-entities">—</div><div class="l">实体</div></div>
+              <div class="st"><div class="n" id="h-tags">—</div><div class="l">标签</div></div>
+              <div class="st"><div class="n" id="h-world">—</div><div class="l">world</div></div>
+              <div class="st"><div class="n" id="h-exp">—</div><div class="l">experience</div></div>
+            </div>
+            <div class="sect" style="font-size:14px">近 7 天写入节奏</div>
+            <div id="tschart"></div>
+            <div class="meta" style="margin-top:6px">■ world　■ experience　■ observation　·　UTC 自然日分桶</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="card">
+              <div class="sect" style="margin-top:0;font-size:14px">用量 · 按日（llm-requests）</div>
+              <div class="statrow" style="grid-template-columns:1fr 1fr">
+                <div class="st"><div class="n" id="u-in">—</div><div class="l">input token</div></div>
+                <div class="st"><div class="n" id="u-cache">—</div><div class="l">其中缓存复用</div></div>
+              </div>
+              <div id="u-svg" style="margin-top:8px"></div>
+              <div class="meta" style="margin-top:6px">output <b id="u-out">—</b> · 调用 <b id="u-calls">—</b> 次 · 失败 <b id="u-fail">—</b><br>口径：按日分桶（retention_days 明细保留期）· 无按模型拆分字段，不做拆分假数据</div>
+            </div>
+            <div class="card">
+              <div class="sect" style="margin-top:0;font-size:14px">库档案</div>
+              <div class="meta" id="bank-mission" style="line-height:1.7">—</div>
+              <div class="tagchips" id="home-tags" style="margin-top:10px"></div>
+              <div class="meta" style="margin-top:8px">/tags 为全库口径，与卡片过滤的 total 口径不同——两套口径对不上不是 bug（FAQ ⑦）</div>
+            </div>
           </div>
         </div>
+        <div class="epi">数据源：<code>GET /health</code> · <code>GET /stats</code> · <code>GET /stats/memories-timeseries</code> · <code>GET /tags</code> · <code>GET /entities?limit=1</code> · <code>GET /llm-requests/stats</code> · <code>GET /pages/tree</code>（同源直取 :8888）</div>
+      </div>
 
-        <div class="card">
-          <h3>标签分布 Top 10 <span class="muted" style="font-weight:400" id="tagtotal"></span></h3>
-          <div id="tagbars"></div>
-        </div>
+      <!-- ② 记忆检索 -->
+      <div class="view" id="v-search">
+        <div class="ptitle">记忆检索</div>
+        <div class="psub">已保存的决定、约束、事实与经验——每条都带精确引用与证据链</div>
 
-        <div class="card">
-          <h3>局域网服务探活 <span class="muted" style="font-weight:400">· 纯 HTTP no-cors 探测，不经 8899</span></h3>
-          <div class="lan" id="lan"></div>
-        </div>
-        <div class="epi">数据源：<code>GET /stats</code> · <code>GET /stats/memories-timeseries</code> · <code>GET /tags</code>（同源直取 :8888）</div>
-      </section>
-
-      <!-- ② 记忆卡片 -->
-      <section id="v-memories">
-        <div class="filter">
+        <div class="filterbar">
           <select id="f-type"><option value="">类型：全部</option><option value="world">world</option><option value="experience">experience</option><option value="observation">observation</option></select>
           <select id="f-state"><option value="">状态：全部</option><option value="valid">有效</option><option value="invalidated">已失效</option></select>
-          <span id="f-tags"></span>
+          <span id="f-tags" style="display:contents"></span>
+          <span id="f-extras" style="display:contents"></span>
           <select id="f-time"><option value="">时间：全部</option><option value="7">近 7 天</option><option value="30">近 30 天</option></select>
-          <input id="f-q" placeholder="关键词（q）…">
-          <button class="ghost" id="f-apply">应用过滤</button>
+          <input id="f-q" placeholder="关键词…（服务端 q 检索）">
+          <button class="btn" id="f-apply">搜索</button><button class="btn ghost" id="f-clear">清除</button>
         </div>
-        <div id="memlist"></div>
-        <div class="pager" id="mempager"></div>
-        <div class="epi">数据源：<code>GET /memories/list?type&state&tags&tags_match&q&time_field&start_date&end_date&limit&offset</code> — 服务端过滤（12 个参数），分页 20/页</div>
-      </section>
+        <div class="transrow"><span>请求模式：<b>服务端过滤</b></span><span>实际执行：<b>type + state + tags + q → GET /memories/list</b></span></div>
 
-      <!-- ③ 对话原文 -->
-      <section id="v-docs">
-        <div class="duo">
-          <div class="left">
-            <div class="filter" style="margin-bottom:0"><input id="f-docq" placeholder="按 id/关键词过滤（q）…" style="width:100%"><button class="ghost" id="f-docapply">过滤</button></div>
-            <div id="doclist"></div>
+        <div class="mgrid">
+          <div>
+            <div class="cnt" id="mem-cnt">—</div>
+            <div class="mlist" id="memlist"></div>
+            <div class="pager" id="mempager"></div>
+          </div>
+          <div class="detail" id="memdetail">
+            <div class="empty"><div class="ei">☰</div>← 选择左侧记忆，查看精确引用、来源文档与血缘</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ 观察流 -->
+      <div class="view" id="v-obs">
+        <div class="ptitle">观察流</div>
+        <div class="psub">后台蒸馏出的 observation 记忆——从原始对话到稳定结论的沉淀层</div>
+        <div class="filterbar">
+          <input id="obs-q" placeholder="在观察里搜关键词…（type=observation + q，服务端过滤）" style="flex:1;min-width:0">
+          <button class="btn" id="obs-go">搜</button>
+        </div>
+        <div class="tagchips" id="obs-chips" style="margin-bottom:10px"></div>
+        <div class="transrow" id="obs-trans"><span>数据源：<b>GET /memories/list?type=observation</b></span><span>分区：<b>GET /observations/scopes（53 个 scope 实测）</b></span></div>
+        <div class="tl" id="obs-list"></div>
+        <div class="pager" id="obs-pager"></div>
+      </div>
+
+      <!-- ④ 实体图谱 -->
+      <div class="view" id="v-graph">
+        <div class="ptitle">实体图谱</div>
+        <div class="psub">实体共现关系 · 渲染策略：Top-N + min_count（GET /entities/graph?limit=50&min_count=10），不做全量 45 万边渲染</div>
+        <div class="gwrap">
+          <div class="gsvg" id="graph-svg"><div class="empty"><div class="ei">༚</div>加载实体图谱…</div></div>
+          <div>
+            <div class="cnt" id="graph-cnt">按提及数排序</div>
+            <div class="elist" id="elist"></div>
+            <div class="card" style="margin-top:12px"><div class="meta" id="graph-note">点击实体 → 检索页按 entity_id 过滤其关联记忆；详情含 mention_count / first_seen / last_seen。边 = entities/graph 真实共现数据。</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑤ 知识页面 -->
+      <div class="view" id="v-pages">
+        <div class="ptitle">知识页面</div>
+        <div class="psub">后台蒸馏的知识页与心智模型——带陈旧徽标与内容版本快照</div>
+        <div class="pgrid">
+          <div class="card ptree" style="padding:10px">
+            <div id="pagetree"></div>
+            <div style="padding:10px 6px;display:flex;flex-direction:column;gap:8px"><button class="btn ghost" id="btn-export-one" style="width:100%;display:none">⬇ 导出本页 .md</button><button class="btn ghost" id="btn-export-all" style="width:100%">⬇ 导出全部（GET /pages/export）</button></div>
+            <div class="muted" style="padding:2px 6px;font-size:11px">GET /pages/tree · GET /pages/{page_id} · GET /pages/export</div>
+          </div>
+          <div id="pageview">
+            <div class="empty"><div class="ei">📄</div>← 选择左侧页面加载正文（markdown 原文渲染；「陈旧」徽标 = is_stale）</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑥ 证据原文 -->
+      <div class="view" id="v-docs">
+        <div class="ptitle">证据原文</div>
+        <div class="psub">记忆的来源证据流：会话原文、分块与处理事件</div>
+        <div class="dgrid">
+          <div>
+            <div class="filterbar" style="margin-bottom:10px"><input id="f-docq" placeholder="搜文档 id / 原文…" style="min-width:0;flex:1"><button class="btn" id="f-docapply">搜</button></div>
+            <div class="mlist" id="doclist"></div>
             <div class="muted" style="padding:2px 4px">过滤：<code>GET /documents?q</code> · 点左侧任一条加载原文</div>
           </div>
-          <div class="right" id="docview">
-            <div class="ph">← 选择左侧文档，加载 original_text（JSONL 按 role 着色气泡渲染，单条截 1200 字）</div>
+          <div id="docview">
+            <div class="empty"><div class="ei">💬</div>← 选择左侧文档，加载 original_text（JSONL 按 role 着色气泡）</div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <!-- ④ 知识页面 -->
-      <section id="v-pages">
-        <div class="duo">
-          <div class="left">
-            <div class="tree" id="pagetree"></div>
-            <a id="btn-export-all" class="ghost" style="display:inline-block;margin-top:10px;text-decoration:none" href="#">⬇ 导出全部页面（GET /pages/export）</a>
-            <a id="btn-export-one" class="ghost" style="display:none;margin-top:10px;text-decoration:none" href="#">⬇ 导出本页 .md</a>
-            <div class="muted" style="margin-top:8px;font-size:11.5px">GET /pages/tree · GET /pages/{page_id} · GET /pages/export</div>
+      <!-- ⑦ 召回实验室 -->
+      <div class="view" id="v-recall">
+        <div class="ptitle">召回实验室</div>
+        <div class="psub">异步语义召回自测——预算档与检索轨迹全程透明</div>
+        <div class="card">
+          <div class="recbuilder">
+            <textarea id="recall-q" placeholder="输入查询…例如：fork 安装后如何回滚到官方版？">多智能体统一记忆与编排 的当前结论是什么</textarea>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div class="radios"><label><input type="radio" name="rb" value="low" checked>low</label><label><input type="radio" name="rb" value="mid">mid</label><label><input type="radio" name="rb" value="high">high</label></div>
+              <label class="radios" style="border:none;background:none"><input type="checkbox" id="recall-trace" checked>trace</label>
+              <button class="btn" id="recall-go">执行</button>
+            </div>
           </div>
-          <div class="right" id="pageview">
-            <div class="ph">← 选择左侧页面加载正文（markdown 原文渲染；「陈旧」徽标 = is_stale，借鉴上游 control-plane staleness-badge；API 未提供刷新时间戳）</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ⑤ 召回测试 -->
-      <section id="v-recall">
-        <div class="card recall-box">
-          <h3>召回测试（异步 · 不阻塞面板）</h3>
-          <textarea id="recall-q">多智能体统一记忆与编排 的当前结论是什么</textarea>
-          <div class="recall-opts">
-            <span>预算档：</span>
-            <label><input type="radio" name="rb" value="low" checked> low（实测 40–110s）</label>
-            <label><input type="radio" name="rb" value="mid"> mid</label>
-            <label><input type="radio" name="rb" value="high"> high</label>
-            <label><input type="checkbox" id="recall-trace" checked> trace 检索轨迹</label>
-            <span class="spacer"></span>
-            <button class="ghost" id="recall-go">▶ 执行召回</button>
+          <div class="transrow"><span>预算档 low 实测 <b>40–110s</b> · 页面超时 <b>150s</b></span><span>执行模式：<b>POST /memories/recall · prefer_observations · rerank</b></span></div>
+          <div class="stepflow" id="recall-steps" hidden>
+            <div class="step"><span class="sdot idle"></span>向量检索</div>
+            <div class="step"><span class="sdot idle"></span>重排 rerank</div>
+            <div class="step"><span class="sdot idle"></span>组装上下文（budget）</div>
           </div>
           <div class="progress" id="recall-prog" hidden><span class="spin"></span><span id="recall-progtext">召回执行中…</span></div>
         </div>
-        <div class="card" id="recall-out" hidden>
-          <h3>结果</h3>
+        <div class="sect" id="recall-out-title" hidden>结果</div>
+        <div class="mlist" id="recall-out" hidden>
           <div id="recall-list"></div>
-          <div class="fold" id="tracefold" hidden>▸ 检索轨迹（trace=true：展示召回步骤与每步数据源，借鉴 Zep 召回轨迹设计）<pre id="tracepre"></pre></div>
-          <div class="epi">数据源：<code>POST /memories/recall {query,budget,trace,prefer_observations}</code> · 无 limit 字段 · 非法 budget 422 → 前端档位写死枚举</div>
+          <div class="fold" id="tracefold" hidden>▸ 检索轨迹（trace=true：召回步骤与每步数据源）<pre id="tracepre"></pre></div>
         </div>
-      </section>
+      </div>
 
-      <!-- ⑥ 后台队列 -->
-      <section id="v-ops">
-        <div class="qrow">
-          <span class="qpill">✅ completed <b id="q-completed">—</b></span>
-          <span class="qpill bad">✖ failed <b id="q-failed">—</b></span>
-          <span class="qpill">⏳ pending <b id="q-pending">—</b></span>
-          <span class="qpill">⚙ processing <b id="q-processing">—</b></span>
-          <span class="qpill">总计 <b id="q-total">—</b></span>
-          <span class="spacer"></span>
-          <select class="ghost" id="ops-status"><option value="">按状态过滤（status 参数）</option><option value="failed">failed</option><option value="completed">completed</option><option value="pending">pending</option><option value="processing">processing</option></select>
+      <!-- ⑧ 运行与队列 -->
+      <div class="view" id="v-ops">
+        <div class="ptitle">运行与队列</div>
+        <div class="psub">后台处理管线（非人工评审）——健康、进度与失败原因</div>
+        <div class="filterbar">
+          <select id="ops-status"><option value="">状态：全部</option><option value="completed">completed</option><option value="failed">failed</option><option value="processing">processing</option><option value="pending">pending</option></select>
+          <select id="ops-type"><option value="">类型：全部</option><option value="retain">retain</option><option value="batch_retain">batch_retain</option><option value="consolidation">consolidation</option><option value="graph_maintenance">graph_maintenance</option><option value="refresh_mental_model">refresh_mental_model</option></select>
         </div>
-        <div id="opslist"></div>
-        <div class="epi">数据源：<code>GET /operations?status</code> · 结构化 progress:{stage,processed,total} 为新增展示（8899 只做状态计数），借鉴上游 bank-operations-view</div>
-      </section>
+        <div class="opsline">
+          <span class="b b-done">completed <b id="q-completed">—</b></span><span class="b b-fail">failed <b id="q-failed">—</b></span><span class="b b-run">processing <b id="q-processing">—</b></span><span class="b b-wait">pending <b id="q-pending">—</b></span><span class="b" style="color:var(--ink2);background:var(--surface2)">总计 <b id="q-total">—</b></span>
+        </div>
+        <div id="opslist"><div class="muted">切换到本页时加载（GET /operations）</div></div>
+        <div class="transrow" id="ops-dist"></div>
+        <div class="sect" style="font-size:14px">依赖探活（LAN 5 服务 · no-cors 3.5s 超时，与状态带同一数据源）</div>
+        <div class="card" id="lan" style="display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px"></div>
+      </div>
 
-      <!-- ⑦ 设置 -->
-      <section id="v-settings">
+      <!-- ⑨ 设置 -->
+      <div class="view" id="v-settings">
+        <div class="ptitle">设置</div>
+        <div class="psub">bank 配置白名单编辑 · dirty-chip / 两步确认 / 快照回滚（机制与上一版完全一致）</div>
         <div class="card" id="cfg-gate" hidden>
-          <h3>写通道已关闭（只读模式）</h3>
+          <h3 style="font-size:14px;margin-bottom:6px">写通道已关闭（只读模式）</h3>
           <div class="muted">引擎以 HINDSIGHT_API_ENABLE_BANK_CONFIG_API=false 运行（或版本不支持）：PATCH 被门禁 404，本页降级为只读展示。恢复写通道需在 daemon 环境开启该变量并重启 daemon。</div>
         </div>
         <div class="card">
-          <h3>bank 配置 <span class="muted" style="font-weight:400">· PATCH /banks/{id}/config · 两步确认 · 整批原子</span></h3>
-          <div class="muted" id="cfg-meta">加载中…</div>
+          <div class="cfg-meta" id="cfg-meta">加载中…</div>
           <div class="cfg-actions">
-            <span class="pill warn" id="cfg-dirtychip" hidden><i></i>未保存更改 <b id="cfg-dirtyn">0</b> 项</span>
-            <span class="spacer"></span>
-            <button class="ghost" id="cfg-reload">⟳ 重新读取</button>
-            <button class="ghost" id="cfg-revert" hidden>↩ 放弃更改</button>
-            <button class="ghost" id="cfg-snap" hidden>⏪ 回滚到最近保存…</button>
-            <button class="ghost" id="cfg-save" hidden>💾 保存更改…</button>
+            <span class="dirtychip" id="cfg-dirtychip" hidden>● 未保存更改 <b id="cfg-dirtyn">0</b> 项</span>
+            <span class="tspace"></span>
+            <button class="btn ghost" id="cfg-reload">⟳ 重新读取</button>
+            <button class="btn ghost" id="cfg-revert" hidden>↩ 放弃更改</button>
+            <button class="btn ghost" id="cfg-snap" hidden>⏪ 回滚到最近保存…</button>
+            <button class="btn" id="cfg-save" hidden>💾 保存更改…</button>
           </div>
           <div class="cfg-msg" id="cfg-msg" hidden></div>
         </div>
-        <div class="card"><h3>库身份（名称 · mission）</h3><div id="cfg-f-id"></div></div>
-        <div class="card"><h3>倾向 disposition（1–5 · null=继承默认）</h3><div id="cfg-f-disp"></div></div>
-        <div class="card"><h3>召回与检索</h3><div id="cfg-f-recall"></div></div>
-        <div class="card"><h3>摄取 retain</h3><div id="cfg-f-retain"></div></div>
-        <div class="card"><h3>归纳 consolidation</h3><div id="cfg-f-cons"></div></div>
-        <div class="card"><h3>杂项与决策模型</h3><div id="cfg-f-misc"></div></div>
-        <div class="card"><h3>其余配置（只读 · 白名单外字段）</h3><div class="muted" id="cfg-rohint"></div><button class="ghost" id="cfg-foldbtn" style="margin-top:8px">▸ 展开全部只读键</button><pre id="cfg-foldpre" hidden></pre></div>
+        <div class="card"><div class="sect" style="margin-top:0;font-size:14px">库身份（名称 · mission）</div><div id="cfg-f-id"></div></div>
+        <div class="card"><div class="sect" style="margin-top:0;font-size:14px">倾向 disposition（1–5 · null=继承默认）</div><div id="cfg-f-disp"></div></div>
+        <div class="card"><div class="sect" style="margin-top:0;font-size:14px">召回与检索</div><div id="cfg-f-recall"></div></div>
+        <div class="card"><div class="sect" style="margin-top:0;font-size:14px">摄取 retain</div><div id="cfg-f-retain"></div></div>
+        <div class="card"><div class="sect" style="margin-top:0;font-size:14px">归纳 consolidation</div><div id="cfg-f-cons"></div></div>
+        <div class="card"><div class="sect" style="margin-top:0;font-size:14px">杂项与决策模型</div><div id="cfg-f-misc"></div></div>
+        <div class="card"><div class="sect" style="margin-top:0;font-size:14px">其余配置（只读 · 白名单外字段）</div><div class="muted" id="cfg-rohint"></div><button class="btn ghost" id="cfg-foldbtn" style="margin-top:8px">▸ 展开全部只读键</button><pre id="cfg-foldpre" hidden></pre></div>
         <div class="epi">数据源：GET/PATCH /v1/default/banks/{id}/config（同源直取）· PATCH 为 updates 部分提交、merge 语义、整批原子（任一字段非法整批 400 零写入）· 热生效无需重启 · 回滚=「回滚到最近保存」整包 PATCH 快照 · 凭据/LLM/端口/DB 类为服务器级字段，引擎 400 硬拒</div>
-      </section>
+      </div>
 
-      <!-- ⑧ 帮助 -->
-      <section id="v-help">
-        <div class="duo">
-          <div class="left">
-            <div class="tree help-toc" id="help-toc"></div>
-            <div class="muted" style="margin-top:8px;font-size:11.5px">点击目录跳转 · 文档内置渲染，离线可读</div>
-          </div>
-          <div class="right" id="help-body">
-            <div class="card help-sec" id="h-1" data-toc="① 这是什么">
-              <h3>① 这是什么</h3>
-              <p>「记忆工作台」是本机 Hindsight 记忆库（单库 <code>coding-agent::dsh-brain</code>）的可视面板：本页由 hindsight fork 自带（<code>/ui</code>，:8888），DSH 侧栏「记忆」入口即内嵌本页。数据与引擎同源直取，无代理层、不经旧 8899 看板。</p>
+      <!-- ⑩ 帮助 -->
+      <div class="view" id="v-help">
+        <div class="ptitle">帮助</div>
+        <div class="psub">内置文档，离线可读 · 点击目录跳转</div>
+        <div class="grid2" style="grid-template-columns:260px 1fr">
+          <div class="card toclist" id="help-toc" style="padding:10px"></div>
+          <div id="help-body">
+            <div class="card help-sec" id="h-1" data-toc="① 记忆工作台是什么">
+              <h3>① 记忆工作台是什么</h3>
+              <p>本机 Hindsight 记忆库（单库 <code>coding-agent::dsh-brain</code>）的可视面板：本页由 hindsight fork 自带（<code>/ui</code>，:8888），DSH 侧栏「记忆」入口即内嵌本页。数据与引擎同源直取，无代理层、不经旧 8899 看板。</p>
               <p>与机器上另外三套记忆系统（hermes-loop、工作台知识库、本地 Hermes）互不读写。</p>
             </div>
             <div class="card help-sec" id="h-2" data-toc="② 数据从哪来">
@@ -408,20 +562,22 @@ footer.foot b{color:var(--ink2)}
               <p>DSH 会话开始时 hook 自动把会话回写（retain）给 daemon（<code>127.0.0.1:8888</code>）→ 存入内嵌 PostgreSQL；LLM 提取走局域网 <code>192.168.1.14:11438</code>（Qwen3.6-35B），embedding/rerank 为本地模型不出网。</p>
               <p>daemon 由 DSH hook 拉起，DSH 重启会带走它、下次会话自动重拉（离线横幅消失即恢复）。</p>
             </div>
-            <div class="card help-sec" id="h-3" data-toc="③ 页签导览">
-              <h3>③ 页签导览</h3>
+            <div class="card help-sec" id="h-3" data-toc="③ 页面导览">
+              <h3>③ 页面导览</h3>
               <ul>
-                <li><b>总览</b>：统计 8 格、近 7 天记忆增长、标签 Top10、局域网服务探活。</li>
-                <li><b>记忆卡片</b>：全部记忆条目，类型/状态/标签/时间/关键词服务端过滤，每页 20 条。</li>
-                <li><b>对话原文</b>：会话文档列表 + original_text JSONL 气泡渲染。</li>
-                <li><b>知识页面</b>：蒸馏页面树（Component map / Conventions / Key decisions 等），陈旧徽标 + 本页/整包导出。</li>
-                <li><b>召回测试</b>：语义检索自测，budget 三档。</li>
-                <li><b>后台队列</b>：LLM 后台任务进度与失败原因。</li>
-                <li><b>设置</b>：bank 配置白名单编辑（见 ⑤）。</li>
+                <li><b>工作台</b>：注意力区（失败/处理中/陈旧页/待归纳）、记忆存量 8 格、近 7 天写入节奏、用量按日、库档案。</li>
+                <li><b>记忆检索</b>：全部记忆条目 master-detail，类型/状态/标签/时间/关键词服务端过滤；右侧精确引用卡（节点 ID / 来源文档 / 血缘 / 复制引用）。</li>
+                <li><b>观察流</b>：observation 时间线（按日分组），scope 标签 chips + 关键词过滤，条目点击跳检索详情。</li>
+                <li><b>实体图谱</b>：实体共现图（Top-N + min_count 策略）+ 提及排行，点击实体跳按 entity_id 过滤的检索。</li>
+                <li><b>知识页面</b>：蒸馏页面树 + 陈旧徽标 + 本页/整包导出 + 版本历史卡（mental-models 快照）。</li>
+                <li><b>证据原文</b>：文档列表 + original_text JSONL 气泡 + 分块 + 处理事件 + 派生记忆数。</li>
+                <li><b>召回实验室</b>：语义检索自测，budget 三档 + trace 轨迹。</li>
+                <li><b>运行与队列</b>：后台任务进度、失败原因、类型分布、依赖探活。</li>
+                <li><b>设置 / 帮助</b>：bank 配置白名单编辑（见 ⑤）与本文档。</li>
               </ul>
             </div>
-            <div class="card help-sec" id="h-4" data-toc="④ 召回测试怎么用">
-              <h3>④ 召回测试怎么用</h3>
+            <div class="card help-sec" id="h-4" data-toc="④ 召回实验室用法">
+              <h3>④ 召回实验室用法</h3>
               <p>budget 三档控制检索规模与耗时：<code>low</code> 实测 40–110s（页面超时 150s）、<code>mid/high</code> 更久更全；trace 展开可看召回轨迹。结果分数 = <code>scores.final</code>（rerank 与语义融合分）。非法 budget 会 422。</p>
             </div>
             <div class="card help-sec" id="h-5" data-toc="⑤ 设置页说明">
@@ -434,45 +590,42 @@ footer.foot b{color:var(--ink2)}
                 <li>写通道被 env 关闭时（<code>HINDSIGHT_API_ENABLE_BANK_CONFIG_API=false</code>）本页降级只读并显示横幅。</li>
               </ul>
             </div>
-            <div class="card help-sec" id="h-6" data-toc="⑥ 后台队列与失败">
-              <h3>⑥ 后台队列与失败</h3>
-              <p>operations = 后台 LLM 任务（retain 提取 / reflect 归纳 / 页面刷新等）。failed 卡的 error_message 是引擎原文（如超 3600s 墙被取消，提示调 <code>HINDSIGHT_API_REFLECT_WALL_TIMEOUT</code>）。重试按钮当前只读（写通道未开放该端点）。</p>
+            <div class="card help-sec" id="h-6" data-toc="⑥ 运行与队列 / 失败">
+              <h3>⑥ 运行与队列 / 失败</h3>
+              <p>operations = 后台 LLM 任务（retain 提取 / 归纳 / 页面刷新 / 图谱维护等）。failed 卡的 error_message 是引擎原文（如超 3600s 墙被取消，提示调 <code>HINDSIGHT_API_REFLECT_WALL_TIMEOUT</code>）。重试按钮当前只读（写通道未开放该端点）。</p>
             </div>
-            <div class="card help-sec" id="h-7" data-toc="⑦ 主题与常见问题">
-              <h3>⑦ 主题与常见问题</h3>
+            <div class="card help-sec" id="h-7" data-toc="⑦ 口径与 FAQ">
+              <h3>⑦ 口径与 FAQ</h3>
               <ul>
                 <li><b>主题</b>：自动（跟随系统明暗）/ 浅色 / 深色，存 localStorage <code>hsb-theme</code>；本页跨源读不到 DSH 客户端变量，自动档只跟 OS。</li>
                 <li><b>离线横幅</b>：daemon 未运行——DSH 重启后 hook 会自动拉起，轮询恢复后自动解除。</li>
-                <li><b>标签数字对不上</b>：标签 Top10 用 /tags 全库口径，记忆卡片过滤 total 是列表口径，两者本就不同。</li>
-                <li><b>页面树「陈旧」徽标</b>：is_stale=true，表示该页面内容落后于库内容，等待下一次刷新。</li>
+                <li><b>标签数字对不上</b>：标签 chips 用 /tags 全库口径，记忆卡片过滤 total 是列表口径，两者本就不同。</li>
+                <li><b>时序分桶</b>：写入节奏按 UTC 自然日分桶（本地 08:00 封口），当天数字随时间增长属正常。</li>
+                <li><b>灰按钮</b>：写操作仅限设置页签白名单字段的 PATCH；队列重试、清库、导入等未开放端点的按钮恒灰。</li>
               </ul>
             </div>
             <div class="card help-sec" id="h-8" data-toc="⑧ 安全与版本">
               <h3>⑧ 安全与版本</h3>
               <p>API 无鉴权、仅绑 <code>127.0.0.1</code>——本机信任环境使用，<b>勿把 8888 暴露到局域网</b>。引擎回滚 = <code>uv tool install --force hindsight-api==1.2.3</code>；<b>禁止</b> <code>uv tool upgrade hindsight-embed</code>（官方新版会把 pg schema 顶上去，fork 版本回不去）。</p>
-              <p>版本：board_static fork（分支 <code>hindsight-board</code>）+ 引擎 <code>/v1/version</code> 自报（当前 1.2.3）。</p>
+              <p>版本：board_static fork（分支 <code>hindsight-board</code>）+ 引擎 <code>/v1/version</code> 自报（见顶部状态带「兼容性」）。</p>
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      </main>
     </div>
+  </div>
 
-    <footer class="foot">
-      <b>记忆看板 · hindsight fork board_static（分支 hindsight-board）</b> — 前端 = 本静态页（样式按 2026-11-24 界面样式稿 1:1 复刻，配色沿用 dsh-personal-workbench <code>--wb-*</code> 设计变量）；后端 = Hindsight daemon 127.0.0.1:8888（单库 · API 1.2.3）；数据全部同源 GET 直取，不经 8899、无代理层。写操作仅限「设置」页签白名单字段的 PATCH（两步确认 · 快照回滚），其余一律只读。<br>
-      样式稿中「对话原文气泡、召回结果卡、探活圆点」的占位示意为实时数据渲染；其余布局/徽标/页签与样式稿一致。
-    </footer>
+  <div class="footer"><b>记忆看板 · hindsight fork board_static（分支 hindsight-board）</b> — PowerContext 风格重设计（2026-11-25 样式稿 1:1 实现）；后端 = Hindsight daemon 127.0.0.1:8888（单库 · API 同源直取）；数据全部 GET 直取，不经 8899、无代理层。写操作仅限「设置」页签白名单字段的 PATCH（两步确认 · 快照回滚），其余一律只读。评审收件箱 / Handoff / 版本树等引擎无对应能力的概念未纳入。</div>
 
-    <div id="modal-backdrop" hidden>
-      <div class="modal" role="dialog" aria-modal="true">
-        <h3 id="modal-title"></h3>
-        <div id="modal-body"></div>
-        <div class="cfg-actions" style="justify-content:flex-end">
-          <button class="ghost" id="modal-cancel">取消</button>
-          <button class="ghost" id="modal-next" hidden>下一步 →</button>
-          <button class="ghost" id="modal-confirm" hidden style="border-color:var(--p0);color:var(--p0)">✔ 确认写入</button>
-        </div>
+  <div id="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+      <div class="cfg-actions" style="justify-content:flex-end">
+        <button class="btn ghost" id="modal-cancel">取消</button>
+        <button class="btn ghost" id="modal-next" hidden>下一步 →</button>
+        <button class="btn ghost" id="modal-confirm" hidden style="border-color:var(--err);color:var(--err)">✔ 确认写入</button>
       </div>
     </div>
   </div>
@@ -503,116 +656,146 @@ function jpatch(url,body,to){var c=new AbortController();var t=setTimeout(functi
         var e=new Error(d);e.status=r.status;throw e}
       return j})},function(e){clearTimeout(t);throw e});}
 
-var S={bank:null,banks:[],stats:null,timer:null,memPage:0,docList:[],pageSel:null,opsTimer:null};
+var S={bank:null,banks:[],stats:null,timer:null,memPage:0,docList:[],pageSel:null,opsTimer:null,
+  tab:null,tagItems:null,pagesCache:null,scopesN:null,memEntity:null,memDoc:null,obsTag:null,obsPage:0,
+  autoref:true,version:null,loaded:{},recallBusy:false,memItems:[],obsItems:[],entItems:[],memHist:null,pendingDoc:null,
+  cfgGate:false,cfgOffline:false,cfgBusy:false,cfgLoaded:false,cfgDirtyN:0,cfgBase:null,cfgSnap:null,cfgCtrl:{},mdTimer:null,mdAction:null,roKeys:[]};
 
-/* ───────────── 页签 ───────────── */
-var TABS=[['v-overview','总览','<rect x="2.5" y="2.5" width="4.6" height="4.6" rx="1"/><rect x="8.9" y="2.5" width="4.6" height="4.6" rx="1"/><rect x="2.5" y="8.9" width="4.6" height="4.6" rx="1"/><rect x="8.9" y="8.9" width="4.6" height="4.6" rx="1"/>'],
-['v-memories','记忆卡片','<path d="M8 2.4 13.6 5.2 8 8 2.4 5.2z"/><path d="M2.4 8 8 10.8 13.6 8M2.4 10.8 8 13.6l5.6-2.8"/>'],
-['v-docs','对话原文','<path d="M3 4.5A1.5 1.5 0 0 1 4.5 3h7A1.5 1.5 0 0 1 13 4.5v5A1.5 1.5 0 0 1 11.5 11H8l-3.5 3v-3h-.5A1.5 1.5 0 0 1 3 9.5z"/>'],
-['v-pages','知识页面','<path d="M4 2.5h6.5L13 5v8.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"/><path d="M5.5 7.5h5M5.5 10h5"/>'],
-['v-recall','召回测试','<circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/>'],
-['v-ops','后台队列','<path d="M2 8.5h3l1.5-4 2.5 8 1.5-5.5 1 1.5H14"/>'],
-['v-settings','设置','<circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6L11 5M5 11l-1.4 1.4"/>'],
-['v-help','帮助','<circle cx="8" cy="8" r="6"/><path d="M6.2 6.2a1.8 1.8 0 1 1 2.6 1.6c-.6.3-.8.7-.8 1.4"/><circle cx="8" cy="11.3" r=".6" fill="currentColor" stroke="none"/>']];
-(function(){
-  var nav=$('tabs');
-  TABS.forEach(function(t,i){
-    var b=document.createElement('button');b.className='tb'+(i===0?' on':'');
-    b.innerHTML='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">'+t[2]+'</svg>'+t[1];
-    b.onclick=function(){switchTab(t[0])};nav.appendChild(b);
-  });
-})();
-function switchTab(id,skipHash){
-  S.tab=id;
-  document.querySelectorAll('section').forEach(function(s){s.classList.toggle('on',s.id===id)});
-  document.querySelectorAll('.tabs .tb').forEach(function(b,i){b.classList.toggle('on',TABS[i][0]===id)});
-  if(id==='v-memories'&&!$('memlist').childElementCount)loadMemories(0);
-  if(id==='v-docs'&&!$('doclist').childElementCount)loadDocs();
-  if(id==='v-pages'&&!$('pagetree').childElementCount)loadPages();
-  if(id==='v-ops'&&!$('opslist').childElementCount)loadOps();
-  if(id==='v-settings'&&!S.cfgLoaded)loadSettings();
-  if(!skipHash){try{var h='#'+id;if(location.hash!==h)location.hash=h}catch(e){}}
-}
-window.addEventListener('hashchange',function(){
-  var id=(location.hash||'').replace(/^#/,'');
-  if(id&&id!==S.tab&&TABS.some(function(t){return t[0]===id}))switchTab(id,true);
-});
-
-/* ───────────── 离线态 ───────────── */
 function setOffline(on,msg){
   $('offbanner').hidden=!on;
   var p=$('hpill');
   p.classList.toggle('bad',on);
-  p.innerHTML='<i></i>'+(on?esc(msg||'503 · ECONNREFUSED'):'healthy');
+  $('conn-txt').textContent=on?(msg||'离线'):'daemon healthy';
   S.cfgOffline=on;
   syncCfgLock();
 }
-
-/* ───────────── banks/健康/总览 ───────────── */
 function base(){return '/v1/default/banks/'+encodeURIComponent(S.bank)}
+
+/* ───────────── 导航 / 页签 ───────────── */
+var NAVV=['home','search','obs','graph','pages','docs','recall','ops','settings','help'];
+document.querySelectorAll('.navitem').forEach(function(b){
+  b.addEventListener('click',function(){switchTab(b.getAttribute('data-v'))});
+});
+function switchTab(id,skipHash){
+  S.tab=id;
+  document.querySelectorAll('.navitem').forEach(function(x){x.classList.toggle('active',x.getAttribute('data-v')===id)});
+  document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('on',v.id==='v-'+id)});
+  $('content').scrollTop=0;
+  if(id==='search'&&!S.loaded.search)loadMemories(0);
+  if(id==='obs'&&!S.loaded.obs)loadObs(0);
+  if(id==='graph'&&!S.loaded.graph)loadGraph();
+  if(id==='pages'&&!S.loaded.pages)loadPages();
+  if(id==='docs'&&!S.loaded.docs)loadDocs();
+  if(id==='ops'&&!S.loaded.ops)loadOps();
+  if(id==='settings'&&!S.cfgLoaded)loadSettings();
+  if(!skipHash){try{var h='#'+id;if(location.hash!==h)location.hash=id}catch(e){}}
+}
+window.addEventListener('hashchange',function(){
+  var id=(location.hash||'').replace(/^#/,'');
+  if(id&&id!==S.tab&&NAVV.indexOf(id)>=0)switchTab(id,true);
+});
+
+/* ───────────── 版本 / 写通道 gate ───────────── */
+function loadVersion(){
+  return jget('/v1/version',8000).then(function(v){
+    S.version=v;
+    S.cfgGate=!(v&&v.features&&v.features.bank_config_api);
+    $('sb-ver').textContent='v'+((v&&(v.api_version||v.version))||'—')+(S.cfgGate?' · 只读':'');
+    syncCfgLock();
+  }).catch(function(){$('sb-ver').textContent='—'});
+}
+
+/* ───────────── banks ───────────── */
 function loadBanks(){
   return jget('/v1/default/banks').then(function(d){
     S.banks=(d&&d.banks)||[];
     var sel=$('banksel');sel.innerHTML='';
     S.banks.forEach(function(b){
       var o=document.createElement('option');o.value=b.bank_id;
-      o.textContent='⛁ '+b.bank_id+(S.banks.length>1?'（'+(b.name||'')+'）':'（唯一 bank）');
+      o.textContent='⛁ '+b.bank_id+(S.banks.length>1?'（'+(b.name||'')+'）':'');
       sel.appendChild(o);
     });
     if(!S.bank&&S.banks.length)S.bank=S.banks[0].bank_id;
     if(S.bank)sel.value=S.bank;
-    $('t-bank').textContent='bank '+(S.bank||'—');
-    sel.onchange=function(){if(S.cfgDirtyN>0&&!window.confirm('设置页有未保存更改，切换 bank 将丢弃这些编辑（不会写入）。继续？'))return;S.bank=sel.value;S.cfgLoaded=false;S.epoch=(S.epoch||0)+1;S.docEp=(S.docEp||0)+1;S.pageEp=(S.pageEp||0)+1;S.memPage=0;$('memlist').innerHTML='';$('doclist').innerHTML='';$('docview').innerHTML='<div class="ph">← 选择左侧文档…</div>';$('pagetree').innerHTML='';$('pageview').innerHTML='<div class="ph">← 选择左侧页面…</div>';$('opslist').innerHTML='';$('t-bank').textContent='bank '+S.bank;boot(true)};
+    sel.onchange=function(){
+      if(S.cfgDirtyN>0&&!window.confirm('设置页有未保存更改，切换 bank 将丢弃这些编辑（不会写入）。继续？')){sel.value=S.bank;return}
+      S.bank=sel.value;
+      S.loaded={};S.cfgLoaded=false;S.memEntity=null;S.memDoc=null;S.obsTag=null;S.pagesCache=null;
+      S.memPage=0;S.obsPage=0;
+      ['memlist','doclist','obs-list','opslist'].forEach(function(id){$(id).innerHTML=''});
+      $('memdetail').innerHTML='<div class="empty"><div class="ei">☰</div>← 选择左侧记忆</div>';
+      $('docview').innerHTML='<div class="empty"><div class="ei">💬</div>← 选择左侧文档</div>';
+      $('pageview').innerHTML='<div class="empty"><div class="ei">📄</div>← 选择左侧页面</div>';
+      $('graph-svg').innerHTML='<div class="empty"><div class="ei">༚</div>加载实体图谱…</div>';
+      $('elist').innerHTML='';
+      boot(true);
+    };
+    var bn=S.banks.filter(function(y){return y.bank_id===S.bank})[0]||{};
+    $('bank-mission').textContent=trunc(bn.mission||'（bank 未提供 mission 描述）',160);
   });
 }
+
+/* ───────────── 工作台 vitals ───────────── */
 function loadVitals(){
   var b=base(),vf=0,ep=(S.epoch=(S.epoch||0)+1);
   return jget('/health',6000).then(function(h){
     setOffline(false);
-    $('hpill').innerHTML='<i></i>'+esc((h.status||'healthy')+' · db '+(h.db_acquire_ms!=null?h.db_acquire_ms:'—')+'ms · 池 '+(h.db_pool_in_use!=null?h.db_pool_in_use:'—')+'/'+(h.db_pool_idle!=null?h.db_pool_idle:'—')+'/'+(h.db_pool_max!=null?h.db_pool_max:'—'));
-    $('hpill').title='连接池：占用/空闲/上限；db_acquire_ms=从池取连接耗时（慢=池耗尽）';
+    $('sb-pool').textContent=(h.db_pool_in_use!=null?h.db_pool_in_use:'—')+'/'+(h.db_pool_idle!=null?h.db_pool_idle:'—')+'/'+(h.db_pool_max!=null?h.db_pool_max:'—')+' · 取用 '+(h.db_acquire_ms!=null?h.db_acquire_ms:'—')+'ms';
   },function(e){ setOffline(true,'连接失败 · '+(e&&e.name==='AbortError'?'超时':'拒绝/不可达')); vf++; return null; })
   .then(function(){
     if(!S.bank||$('hpill').classList.contains('bad'))return;
     return jget(b+'/stats').then(function(st){
       if(ep!==S.epoch)return;
       S.stats=st;
-      $('s-nodes').textContent=fmt(st.total_nodes);
-      $('s-docs').textContent=fmt(st.total_documents);
-      var ft=st.nodes_by_fact_type||{};
-      $('s-obs').textContent=fmt(ft.observation);
-      $('s-exp').textContent=fmt(ft.experience);
-      $('s-pend').textContent=fmt(st.pending_consolidation);
-      $('s-failed').textContent=fmt(st.failed_operations);
-      var ob=st.operations_by_status||{};
-      $('s-proc').textContent=fmt(ob.processing||0);
-      $('s-lastc').textContent=st.last_consolidated_at?fmtDT(st.last_consolidated_at):'—';
-      var lt=st.links_by_link_type||{};
-      var parts=[];
-      ['entity','semantic','temporal','caused_by'].forEach(function(k){ if(lt[k]!=null)parts.push(k+' '+fmt(lt[k])) });
-      $('linklegend').textContent='关联边 '+fmt(st.total_links)+(parts.length?' · '+parts.join(' / '):'');
-      // 队列 pills（总计=operations_by_status 全状态求和，自动涵盖 cancelled；/operations total 对账）
+      var ft=st.nodes_by_fact_type||{},ob=st.operations_by_status||{};
+      $('h-nodes').textContent=fmt(st.total_nodes);
+      $('h-docs').textContent=fmt(st.total_documents);
+      $('h-obs').textContent=fmt(ft.observation);
+      $('h-links').textContent=fmt(st.total_links);
+      $('h-world').textContent=fmt(ft.world);
+      $('h-exp').textContent=fmt(ft.experience);
+      $('n-failed').textContent=fmt(st.failed_operations);
+      $('n-proc').textContent=fmt(ob.processing||0);
+      $('n-pend').textContent=fmt(st.pending_consolidation);
+      $('sb-cons').textContent=st.last_consolidated_at?fmtDT(st.last_consolidated_at):'—';
       var obTotal=0;Object.keys(ob).forEach(function(k){obTotal+=ob[k]||0});
       $('q-completed').textContent=fmt(ob.completed||0);
       $('q-failed').textContent=fmt(ob.failed||0);
       $('q-pending').textContent=fmt(ob.pending||st.pending_operations||0);
       $('q-processing').textContent=fmt(ob.processing||0);
       $('q-total').textContent=fmt(obTotal);
-    }).catch(function(){});
+    }).catch(function(){vf++});
   }).then(function(){
+    if(!S.bank||$('hpill').classList.contains('bad'))return;
     return jget(b+'/stats/memories-timeseries').then(function(ts){if(ep!==S.epoch)return;renderTS(ts)},function(){vf++});
   }).then(function(){
+    if(!S.bank||$('hpill').classList.contains('bad'))return;
     return jget(b+'/tags').then(function(tg){
       if(ep!==S.epoch)return;
       var items=(tg&&(tg.items||tg.tags))||[];
       items=items.slice().sort(function(a,c){return c.count-a.count});
-      $('tagtotal').textContent='· 共 '+fmt(items.length)+' 个标签（/tags 全库口径，与卡片过滤的总数口径不同）';
-      renderTags(items.slice(0,10),items.length?items[0].count:1);
-      renderFilterChips(items.slice(0,12));
+      S.tagItems=items;
+      $('h-tags').textContent=fmt(items.length);
+      renderHomeTags(items.slice(0,5));
+      renderObsChips();
     },function(){vf++});
   }).then(function(){
+    if(!S.bank||$('hpill').classList.contains('bad'))return;
+    return jget(b+'/entities?limit=1').then(function(d){if(ep!==S.epoch)return;$('h-entities').textContent=fmt(d&&d.total)},function(){vf++});
+  }).then(function(){
+    if(!S.bank||$('hpill').classList.contains('bad'))return;
+    return jget(b+'/pages/tree').then(function(d){
+      if(ep!==S.epoch)return;
+      S.pagesCache=flatNodes(d&&(d.roots||d.pages));
+      $('n-stale').textContent=fmt(S.pagesCache.filter(function(n){return n.is_stale}).length);
+    },function(){vf++});
+  }).then(function(){
+    if(!S.bank||$('hpill').classList.contains('bad'))return;
+    return jget(b+'/llm-requests/stats').then(function(u){if(ep!==S.epoch)return;renderUsage(u)},function(){vf++});
+  }).then(function(){
     if(ep!==S.epoch)return;
-    $('upd').textContent='更新于 '+new Date().toTimeString().slice(0,8)+(vf?' · '+vf+' 项请求失败':'');
+    $('upd').textContent=new Date().toTimeString().slice(0,8);
+    $('updfail').textContent=String(vf);
   });
 }
 function renderTS(ts){
@@ -624,67 +807,104 @@ function renderTS(ts){
   });
   if(!TS.length){$('tschart').innerHTML='<div class="muted">时序数据为空</div>';return}
   var MAX=1;TS.forEach(function(d){MAX=Math.max(MAX,d[1]+d[2]+d[3])});
-  var H=120,W=28,G=22,x=8,svg='<svg width="'+(x+TS.length*(W+G))+'" height="'+(H+22)+'">';
+  var H=110,W=52,G=30,x=8,svg='<svg width="100%" viewBox="0 0 '+(x+TS.length*(W+G))+' '+(H+26)+'" preserveAspectRatio="xMidYMid meet">';
   TS.forEach(function(d){
     var segs=[['var(--t-world)',d[1]],['var(--t-exp)',d[2]],['var(--t-obs)',d[3]]],y=H;
     segs.forEach(function(s){
       var h=Math.round(s[1]/MAX*H*10)/10;if(h<=0)return;y-=h;
-      svg+='<rect x="'+x+'" y="'+y.toFixed(1)+'" width="'+W+'" height="'+h.toFixed(1)+'" rx="2" fill="'+s[0]+'"/>';
+      svg+='<rect x="'+x+'" y="'+y.toFixed(1)+'" width="'+W+'" height="'+h.toFixed(1)+'" rx="3" fill="'+s[0]+'"/>';
     });
-    if(d[1]+d[2]+d[3]>0)svg+='<text x="'+(x+W/2)+'" y="'+(H-8-Math.round((d[1]+d[2]+d[3])/MAX*H))+'" fill="var(--ink2)" font-size="9" text-anchor="middle">'+(d[1]+d[2]+d[3])+'</text>';
-    svg+='<text x="'+(x+W/2)+'" y="'+(H+14)+'" fill="var(--ink2)" font-size="10" text-anchor="middle">'+esc(d[0])+'</text>';
+    svg+='<text x="'+(x+W/2)+'" y="'+(H+16)+'" fill="var(--ink3)" font-size="10" text-anchor="middle" font-family="monospace">'+esc(d[0])+'</text>';
     x+=W+G;
   });
   svg+='<line x1="0" y1="'+H+'" x2="'+(x-G+8)+'" y2="'+H+'" stroke="var(--line)"/>';
-  svg+='</svg>';$('tschart').innerHTML=svg;
+  svg+='</svg>';
+  $('tschart').innerHTML=svg;
 }
-function renderTags(items,max){
-  $('tagbars').innerHTML=items.map(function(t){
-    var w=Math.max(3,Math.round(t.count/max*260));
-    return '<div class="trow"><span class="tn" title="'+esc(t.tag)+'">'+esc(t.tag)+'</span><span class="bar" style="width:'+w+'px"></span><span class="tc">'+fmt(t.count)+'</span></div>';
-  }).join('')||'<div class="muted">无标签</div>';
-}
-function renderFilterChips(items){
-  var host=$('f-tags');
-  var sel={};
-  host.querySelectorAll('.tagchip:not(.plain)').forEach(function(c){sel[c.textContent]=1});
-  host.innerHTML='';
-  items.forEach(function(t){
-    var c=document.createElement('span');c.className='tagchip plain';c.textContent=t.tag;
-    if(sel[t.tag])c.classList.remove('plain');
-    c.onclick=function(){c.classList.toggle('plain')};
-    host.appendChild(c);
+function renderUsage(u){
+  var buckets=(u&&(u.buckets||[]))||[];
+  var tin=0,tc=0,tout=0,calls=0,fails=0;
+  buckets.forEach(function(b){
+    var t=b.tokens||{};
+    tin+=t.input||0;tc+=t.cached||0;tout+=t.output||0;
+    calls+=b.total||0;
+    var stt=b.statuses||{};fails+=stt.error||0;
   });
+  $('u-in').textContent=tin?fmt(Math.round(tin/1000))+'K':'—';
+  $('u-cache').textContent=tc?fmt(Math.round(tc/1000))+'K':'—';
+  $('u-out').textContent=tout?fmt(Math.round(tout/1000))+'K':'—';
+  $('u-calls').textContent=fmt(calls);
+  $('u-fail').textContent=fmt(fails);
+  var MAX=1;buckets.forEach(function(b){MAX=Math.max(MAX,(b.tokens||{}).input||0)});
+  if(buckets.length&&MAX>1){
+    var W=Math.max(12,Math.floor(560/Math.max(buckets.length,6))-12),x=6,svg='<svg width="100%" viewBox="0 0 '+Math.max(buckets.length*(W+12)+12,220)+' 44" preserveAspectRatio="xMidYMid meet">';
+    buckets.slice(-12).forEach(function(b){
+      var v=(b.tokens||{}).input||0;
+      var h=Math.max(2,Math.round(v/MAX*34));
+      svg+='<rect x="'+x+'" y="'+(40-h)+'" width="'+W+'" height="'+h+'" rx="2" fill="rgba(52,152,219,.55)"/>';
+      x+=W+12;
+    });
+    svg+='</svg>';
+    $('u-svg').innerHTML=svg;
+  }else{
+    $('u-svg').innerHTML='<div class="muted">暂无按桶用量数据</div>';
+  }
+}
+function renderHomeTags(top){
+  $('home-tags').innerHTML=top.map(function(t){
+    return '<span class="tc">'+esc(t.tag)+' <b>'+fmt(t.count)+'</b></span>';
+  }).join('')||'<span class="muted">无标签</span>';
 }
 
-/* ───────────── 局域网探活 ───────────── */
+/* ───────────── LAN 探活（状态带 + 运行页共用） ───────────── */
 var LAN=[['Qwen3.6 提取',11438,'192.168.1.14'],['Laya 决策',11440,'192.168.1.14'],['Embed',11435,'192.168.1.14'],['Rerank',11439,'192.168.1.14'],['Status',9091,'127.0.0.1']];
 function probeLan(){
-  var host=$('lan');host.innerHTML='';
-  LAN.forEach(function(s){
-    var el=document.createElement('div');el.className='svc';
-    el.innerHTML='<span class="dot" style="background:var(--ink3);box-shadow:none"></span>'+esc(s[0])+' · '+s[2]+':'+s[1];
-    host.appendChild(el);
-    var dot=el.querySelector('.dot');
+  var host=$('lan');if(host)host.innerHTML='';
+  LAN.forEach(function(s,i){
+    var dEl=$('sb-d'+i);
+    if(dEl){dEl.className='sdot';dEl.style.background='var(--ink3)'}
+    if(host){
+      var el=document.createElement('span');
+      el.innerHTML=esc(s[0])+' <span class="b b-run" data-svc="'+i+'">'+esc(s[2])+':'+s[1]+' ●</span>';
+      host.appendChild(el);
+    }
     var c=new AbortController();var t=setTimeout(function(){c.abort()},3500);
     fetch('http://'+s[2]+':'+s[1]+'/',{mode:'no-cors',signal:c.signal})
-      .then(function(){clearTimeout(t);dot.className='dot';dot.removeAttribute('style')},
-        function(){clearTimeout(t);dot.className='dot down';dot.removeAttribute('style')});
+      .then(function(){clearTimeout(t);paint(i,true)},
+        function(){clearTimeout(t);paint(i,false)});
+    function paint(i,up){
+      var d=$('sb-d'+i);
+      if(d){d.className='sdot '+(up?'ok':'warn');d.removeAttribute('style')}
+      var bb=document.querySelector('#lan [data-svc="'+i+'"]');
+      if(bb)bb.className='b '+(up?'b-done':'b-fail');
+    }
   });
 }
 
-/* ───────────── 记忆卡片 ───────────── */
-function badgeCls(t){return t==='world'?'b-world':(t==='experience'?'b-exp':(t==='observation'?'b-obs':'b-misc'))}
+/* ───────────── 记忆检索（master-detail） ───────────── */
+function badgeCls(t){return t==='world'?'b-world':(t==='experience'?'b-exp':(t==='observation'?'b-obs':'b-run'))}
+function stateCls(s){return s==='invalidated'?'b-invalid':'b-valid'}
 function memFilters(){
   var p=[];var type=$('f-type').value,state=$('f-state').value;
-  var tags=[].slice.call(document.querySelectorAll('#f-tags .tagchip:not(.plain)')).map(function(c){return c.textContent});
+  var tags=[].slice.call(document.querySelectorAll('#f-tags .tc.sel')).map(function(c){return c.getAttribute('data-t')});
   var time=$('f-time').value,q=$('f-q').value.trim();
   if(type)p.push('type='+encodeURIComponent(type));
   if(state)p.push('state='+encodeURIComponent(state));
   if(tags.length)p.push('tags='+encodeURIComponent(tags.join(','))+'&tags_match=any');
   if(time)p.push('time_field=created_at&start_date='+encodeURIComponent(new Date(Date.now()-time*864e5).toISOString()));
   if(q)p.push('q='+encodeURIComponent(q));
+  if(S.memEntity)p.push('entity_id='+encodeURIComponent(S.memEntity.id));
+  if(S.memDoc)p.push('document_id='+encodeURIComponent(S.memDoc));
   return p.length?'&'+p.join('&'):'';
+}
+function renderExtras(){
+  var host=$('f-extras');host.innerHTML='';
+  function chip(label,fn){
+    var c=document.createElement('span');c.className='tc sel';c.textContent=label+' ×';
+    c.onclick=fn;host.appendChild(c);
+  }
+  if(S.memEntity)chip('实体：'+trunc(S.memEntity.name||S.memEntity.id,18),function(){S.memEntity=null;renderExtras();loadMemories(0)});
+  if(S.memDoc)chip('文档：'+trunc(S.memDoc,22),function(){S.memDoc=null;renderExtras();loadMemories(0)});
 }
 function loadMemories(page){
   if(!S.bank)return;
@@ -695,19 +915,29 @@ function loadMemories(page){
   jget(base()+'/memories/list?limit='+lim+'&offset='+off+memFilters()).then(function(d){
     if(S.bank!==bk)return;
     var items=(d&&d.items)||[],total=(d&&d.total)||0;
-    $('memlist').innerHTML=items.map(function(m){
-      var tags=(m.tags||[]).slice(0,3).map(function(t){return '<span class="tagchip plain">'+esc(t)+'</span>'}).join('');
+    $('mem-cnt').textContent='本次返回 '+items.length+' 条 · 共 '+fmt(total)+' 条';
+    $('memlist').innerHTML=items.map(function(m,i){
+      var tags=(m.tags||[]).slice(0,3).map(function(t){return '<span class="b" style="color:var(--ink2);background:var(--surface2)">'+esc(t)+'</span>'}).join('');
       var meta=[];
       if(m.metadata&&m.metadata.repo)meta.push('repo: '+esc(m.metadata.repo));
       meta.push('proof '+(m.proof_count!=null?m.proof_count:'—'));
       meta.push(fmtDT(m.date));
-      meta.push('#'+esc(trunc(m.id||'',8)));
-      return '<div class="mem"><div class="head"><span class="badge '+badgeCls(m.fact_type)+'">'+esc(m.fact_type||'—')+'</span>'
-        +'<span class="badge '+(m.state==='invalid'?'b-invalid':'b-valid')+'">'+esc(m.state||'valid')+'</span>'+tags+'</div>'
-        +'<div class="text" title="'+esc(trunc(m.text,400))+'">'+esc(trunc(m.text,300))+'</div>'
-        +'<div class="meta">'+meta.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div></div>';
+      return '<button class="mitem" data-i="'+i+'">'
+        +'<div class="mm"><span class="b '+badgeCls(m.fact_type)+'">'+esc(m.fact_type||'—')+'</span>'
+        +'<span class="b '+stateCls(m.state)+'">'+esc(m.state||'valid')+'</span>'+tags+'</div>'
+        +'<div class="tx">'+esc(trunc(m.text,240))+'</div>'
+        +'<div class="mm"><span class="meta">'+meta.join(' · ')+'</span></div></button>';
     }).join('')||'<div class="ph">无匹配记忆</div>';
+    S.memItems=items;
+    document.querySelectorAll('#memlist .mitem').forEach(function(el){
+      el.onclick=function(){
+        document.querySelectorAll('#memlist .mitem').forEach(function(x){x.classList.remove('sel')});
+        el.classList.add('sel');
+        showMemDetail(S.memItems[+el.getAttribute('data-i')]);
+      };
+    });
     renderPager($('mempager'),total,lim,page,function(p){loadMemories(p)});
+    S.loaded.search=true;
   }).catch(function(e){$('memlist').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
 }
 function renderPager(host,total,lim,page,go){
@@ -721,61 +951,206 @@ function renderPager(host,total,lim,page,go){
   host.innerHTML='每页 '+lim+' · 共 '+fmt(total)+' 条 &nbsp;'+btns.join(' ');
   host.querySelectorAll('.pg').forEach(function(b){b.onclick=function(){go(+b.getAttribute('data-p'))}});
 }
+function showMemDetail(m){
+  if(!m)return;
+  var tags=(m.tags||[]).slice(0,4).map(function(t){return '<span class="b" style="color:var(--ink2);background:var(--surface2)">'+esc(t)+'</span>'}).join('');
+  var doc=m.document_id?'<u data-act="jdoc" data-arg="'+esc(m.document_id)+'">'+esc(trunc(m.document_id,30))+' → 证据原文</u>':'（无来源文档）';
+  var blood='（无合并来源）';
+  var sm=(m.source_memory_ids||[]);
+  if(sm.length){
+    blood=sm.slice(0,2).map(function(x){return '<u data-act="jmem" data-arg="'+esc(x)+'">'+esc(trunc(x,12))+'…</u>'}).join(' · ')
+      +(sm.length>2?(' 等 '+sm.length+' 条'):'')+' → 跳检索详情';
+  }
+  $('memdetail').innerHTML=
+    '<div class="mm" style="margin-bottom:10px"><span class="b '+badgeCls(m.fact_type)+'">'+esc(m.fact_type||'—')+'</span>'
+    +'<span class="b '+stateCls(m.state)+'">'+esc(m.state||'valid')+'</span>'+(m.proof_count>1?'<span class="b b-hit">血缘 ×'+m.proof_count+'</span>':'')+tags+'</div>'
+    +'<h3>'+esc(m.text)+'</h3>'
+    +(m.context?'<div class="meta" style="line-height:1.7">上下文：'+esc(m.context)+'</div>':'')
+    +'<div class="refcard">'
+    +'<div class="rrow"><span>节点 ID</span><code>'+esc(m.id)+'</code></div>'
+    +'<div class="rrow"><span>类型</span><code>'+esc(m.fact_type||'—')+' · state='+esc(m.state||'valid')+'</code></div>'
+    +'<div class="rrow"><span>来源文档</span><code>'+doc+'</code></div>'
+    +'<div class="rrow"><span>血缘</span><code>'+blood+'</code></div>'
+    +'<button class="copybtn" data-act="copyref" data-arg="'+esc(m.id)+'">📋 复制精确引用</button>'
+    +'</div>'
+    +'<div class="sect" style="font-size:14px">版本与溯源</div>'
+    +'<div class="evrow"><span class="et">ID 全长</span><span class="mono">'+esc(m.id)+'</span></div>'
+    +'<div class="evrow"><span class="et">证明数</span><span>proof ×'+(m.proof_count!=null?m.proof_count:'—')+' · 记录于 '+fmtDT(m.date)+'</span></div>'
+    +'<div class="evrow"><span class="et">事件</span><span id="md-hist">查询中…（/memories/{id}/history；多数记忆无合并历史）</span></div>';
+  S.memHist=null;
+  if(m.id)jget(base()+'/memories/'+encodeURIComponent(m.id)+'/history').then(function(h){
+    S.memHist=h;
+    var el=$('md-hist');if(!el)return;
+    if(!h||!h.length){el.textContent='无事件（该记忆无合并历史）'}
+    else{el.innerHTML=fmt(h.length)+' 条事件 · <u data-act="hist">展开原始事件</u>'}
+  },function(){var el=$('md-hist');if(el)el.textContent='历史端点不可用'});
+}
+$('memdetail').addEventListener('click',function(ev){
+  var el=ev.target.closest('[data-act]');if(!el)return;
+  var act=el.getAttribute('data-act'),arg=el.getAttribute('data-arg');
+  if(act==='copyref'){
+    var m=null;(S.memItems||[]).forEach(function(x){if(x.id===arg)m=x});
+    var txt=m?(m.id+'\n'+m.text+'\n来源: '+(m.document_id||'')):arg;
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt);
+    el.textContent='✔ 已复制';
+    setTimeout(function(){el.textContent='📋 复制精确引用'},2000);
+  }
+  if(act==='jdoc')jumpDoc(arg);
+  if(act==='jmem')jumpMem(arg);
+  if(act==='hist'){
+    var pre=document.createElement('pre');
+    pre.style.cssText='margin-top:8px;white-space:pre-wrap;word-break:break-all;font-size:11px;color:var(--ink2);max-height:280px;overflow:auto;background:var(--surface2);border-radius:8px;padding:10px';
+    pre.textContent=JSON.stringify(S.memHist,null,1).slice(0,6000);
+    el.parentNode.appendChild(pre);el.textContent='事件原文 ↓';
+    el.removeAttribute('data-act');
+  }
+});
+function jumpDoc(id){
+  S.pendingDoc=id;
+  switchTab('v-docs');
+  if(S.loaded.docs)loadDocs();
+}
+function jumpMem(id){
+  switchTab('v-search');
+  $('memdetail').innerHTML='<div class="empty"><div class="ei">☰</div>按 id 直取记忆中…</div>';
+  jget(base()+'/memories/'+encodeURIComponent(id)).then(function(m){
+    if(m&&m.text)showMemDetail(m);
+    else if(m&&(m.items||[]).length)showMemDetail(m.items[0]);
+    else $('memdetail').innerHTML='<div class="ph">未取到该记忆（id='+esc(trunc(id,20))+'…）：引擎未提供按 id 直取端点，可在左侧用 q 搜索关键词。</div>';
+  },function(){
+    $('memdetail').innerHTML='<div class="ph">按 id 直取不可用（引擎无该端点）：血缘 id='+esc(trunc(id,20))+'…，可在左侧 q 搜索相关关键词。</div>';
+  });
+}
 $('f-apply').onclick=function(){loadMemories(0)};
+$('f-clear').onclick=function(){
+  $('f-type').value='';$('f-state').value='';$('f-time').value='';$('f-q').value='';
+  S.memEntity=null;S.memDoc=null;renderExtras();loadMemories(0);
+};
 
-/* ───────────── 对话原文 ───────────── */
-function loadDocs(){
+/* ───────────── 观察流 ───────────── */
+function renderObsChips(){
+  var host=$('obs-chips');if(!host||!S.tagItems)return;
+  var cands=S.tagItems.filter(function(t){return /^(harness|origin|project|kind):/.test(t.tag)}).slice(0,6);
+  var html='<span class="tc click'+(S.obsTag?'':' sel')+'" data-t="">全部</span>';
+  cands.forEach(function(t){
+    html+='<span class="tc click'+(S.obsTag===t.tag?' sel':'')+'" data-t="'+esc(t.tag)+'">'+esc(t.tag)+' · '+fmt(t.count)+'</span>';
+  });
+  host.innerHTML=html;
+  host.querySelectorAll('.tc').forEach(function(c){
+    c.onclick=function(){S.obsTag=c.getAttribute('data-t')||null;renderObsChips();loadObs(0)};
+  });
+}
+function loadObs(page){
   if(!S.bank)return;
   var bk=S.bank;
-  $('doclist').innerHTML='<div class="muted">加载中…</div>';
-  var q=$('f-docq').value.trim();
-  jget(base()+'/documents?limit=40&offset=0'+(q?'&q='+encodeURIComponent(q):'')).then(function(d){
+  S.obsPage=page;
+  var lim=20,off=page*lim;
+  var q=$('obs-q').value.trim();
+  $('obs-list').innerHTML='<div class="muted">加载中…</div>';
+  var p='type=observation&limit='+lim+'&offset='+off;
+  if(q)p+='&q='+encodeURIComponent(q);
+  if(S.obsTag)p+='&tags='+encodeURIComponent(S.obsTag)+'&tags_match=any';
+  jget(base()+'/memories/list?'+p).then(function(d){
     if(S.bank!==bk)return;
-    S.docList=(d&&d.items)||[];
-    $('doclist').innerHTML=S.docList.map(function(doc,i){
-      var isConv=/conversation/.test(doc.id||'');
-      var mt=[];
-      mt.push('<span class="badge '+(isConv?'b-exp':'b-world')+'" style="font-size:10px">'+(isConv?'conversation':'document')+'</span>');
-      if(doc.text_length!=null)mt.push('<span>'+fmt(doc.text_length)+' 字</span>');
-      if(doc.memory_unit_count!=null)mt.push('<span>'+doc.memory_unit_count+' 卡片</span>');
-      var rp=doc.retain_params||{},md=rp.metadata||{};
-      if(md.repo)mt.push('<span>repo: '+esc(md.repo)+'</span>');
-      mt.push('<span>'+fmtDT(doc.updated_at||doc.created_at)+'</span>');
-      return '<div class="doc" data-i="'+i+'"><div class="id">'+esc(doc.id)+'</div><div class="mt">'+mt.join('')+'</div></div>';
-    }).join('')||'<div class="ph">无文档</div>';
-    $('doclist').querySelectorAll('.doc').forEach(function(el){
+    var items=(d&&d.items)||[],total=(d&&d.total)||0;
+    if(S.scopesN==null){
+      jget(base()+'/observations/scopes').then(function(sc){
+        S.scopesN=((sc&&sc.scopes)||[]).length;
+        $('obs-trans').innerHTML='<span>数据源：<b>GET /memories/list?type=observation</b></span><span>分区：<b>'+S.scopesN+' 个 scope · GET /observations/scopes 实测</b></span>';
+      },function(){});
+    }
+    var byDay={},order=[];
+    items.forEach(function(m){
+      var day=String(m.date||'').slice(0,10)||'未知日期';
+      if(!byDay[day]){byDay[day]=[];order.push(day)}
+      byDay[day].push(m);
+    });
+    var html='';
+    order.forEach(function(day){
+      html+='<div class="day">'+day+'</div>';
+      byDay[day].forEach(function(m){
+        html+='<button class="oc" data-mid="'+esc(m.id)+'"><div class="mm"><span class="b b-obs">observation</span><span class="b '+stateCls(m.state)+'">'+esc(m.state||'valid')+'</span></div>'
+          +'<div class="tx">'+esc(trunc(m.text,260))+'</div>'
+          +'<div class="mm"><span class="meta">proof '+(m.proof_count!=null?m.proof_count:'—')+' · '+fmtDT(m.date)+'</span><span class="meta" style="margin-left:auto;color:var(--info)">查看引用 →</span></div></button>';
+      });
+    });
+    $('obs-list').innerHTML=html||'<div class="ph">无观察记录</div>';
+    S.obsItems=items;
+    document.querySelectorAll('#obs-list .oc').forEach(function(el){
       el.onclick=function(){
-        $('doclist').querySelectorAll('.doc').forEach(function(x){x.classList.remove('on')});
-        el.classList.add('on');loadDocDetail(S.docList[+el.getAttribute('data-i')]);
+        var m=null;(S.obsItems||[]).forEach(function(x){if(x.id===el.getAttribute('data-mid'))m=x});
+        if(!m)return;
+        switchTab('v-search');showMemDetail(m);
       };
     });
-  }).catch(function(e){$('doclist').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+    renderPager($('obs-pager'),total,lim,page,function(p2){loadObs(p2)});
+    S.loaded.obs=true;
+  }).catch(function(e){$('obs-list').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
 }
-function loadDocDetail(doc){
-  if(!doc)return;
-  var ep=(S.docEp=(S.docEp||0)+1);
-  $('docview').innerHTML='<div class="card"><h3>'+esc(doc.id)+'</h3><div class="muted">加载 original_text…</div></div>';
-  jget(base()+'/documents/'+encodeURIComponent(doc.id)).then(function(d){
-    if(ep!==S.docEp)return;
-    var raw=(d&&(d.original_text||d.content||''))||'';
-    var lines=[],bubbles='';
-    String(raw).split('\n').forEach(function(ln){
-      ln=ln.trim();if(!ln)return;
-      try{lines.push(JSON.parse(ln))}catch(e){/* 非 JSONL 行忽略 */}
+$('obs-go').onclick=function(){loadObs(0)};
+$('obs-q').addEventListener('keydown',function(e){if(e.key==='Enter')loadObs(0)});
+
+/* ───────────── 实体图谱 ───────────── */
+function loadGraph(){
+  if(!S.bank)return;
+  var bk=S.bank;
+  jget(base()+'/entities/graph?limit=50&min_count=10').then(function(d){
+    if(S.bank!==bk)return;
+    var nodes=(d&&d.nodes||[]).map(function(n){return n.data||n});
+    var edges=(d&&d.edges||[]).map(function(e){return e.data||e});
+    if(!nodes.length){$('graph-svg').innerHTML='<div class="empty"><div class="ei">༚</div>图谱为空</div>';S.loaded.graph=true;return}
+    var W=640,H=420,cx=W/2,cy=H/2;
+    var sorted=nodes.slice().sort(function(a,b){return (b.mentionCount||0)-(a.mentionCount||0)});
+    var pos={},R1=150,R2=205;
+    sorted.forEach(function(n,i){
+      if(i===0){pos[n.id]={x:cx,y:cy};return}
+      var ang=(i-1)/Math.max(1,sorted.length-2)*Math.PI*2-Math.PI/2;
+      var r=(i%2?R1:R2);
+      pos[n.id]={x:cx+Math.cos(ang)*r,y:cy+Math.sin(ang)*r};
     });
-    if(!lines.length)bubbles='<div class="ph">original_text 为空或非 JSONL</div>';
-    lines.forEach(function(o){
-      var role=String(o.role||'system').toLowerCase();
-      var cls=role==='user'?'user':(role==='assistant'?'assistant':'tool');
-      var who=role==='user'?'用户':(role==='assistant'?'助手':(role==='system'?'system 行':(role==='tool'?('工具'+(o.name?' · '+o.name:'')):role)));
-      var ts=o.timestamp!=null?esc(String(o.timestamp).slice(0,19)):'';
-      bubbles+='<div class="bubble '+cls+'">'+(who||ts?'<div class="who">'+esc(who)+(ts?' · '+ts:'')+'</div>':'')+esc(trunc(o.content!=null?o.content:o.text||'',1200))+'</div>';
+    var svg='<svg width="100%" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">';
+    edges.forEach(function(e){
+      var a=pos[e.source],b2=pos[e.target];if(!a||!b2)return;
+      svg+='<line x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+b2.x.toFixed(1)+'" y2="'+b2.y.toFixed(1)+'" stroke="var(--line)" stroke-width="1.1" opacity=".55"/>';
     });
-    $('docview').innerHTML='<div class="card"><h3>original_text 渲染（JSONL 按 role 着色）· '+lines.length+' 行</h3>'+bubbles
-      +'<div class="epi">数据源：<code>GET /documents/{id}</code> · original_text 为 JSONL（每行 {role,timestamp,content}）</div></div>';
-  }).catch(function(e){if(ep!==S.docEp)return;$('docview').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+    var maxM=1;sorted.forEach(function(n){maxM=Math.max(maxM,n.mentionCount||0)});
+    sorted.forEach(function(n,i){
+      var p=pos[n.id];
+      var r=Math.max(6,Math.min(34,8+Math.sqrt((n.mentionCount||0)/maxM)*26));
+      var fill=(i===0)?'var(--acc)':(n.color||'rgba(52,152,219,.8)');
+      svg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+fill+'" '+(i===0?'':'opacity=".88"')+' data-nid="'+esc(n.id)+'" style="cursor:pointer"/>'
+        +'<text x="'+p.x.toFixed(1)+'" y="'+(p.y+r+12).toFixed(1)+'" text-anchor="middle" font-size="10" fill="var(--ink2)">'+esc(trunc(n.label||n.id,14))+(i<8?' · '+fmt(n.mentionCount||0):'')+'</text>';
+    });
+    svg+='</svg>';
+    $('graph-svg').innerHTML=svg;
+    $('graph-svg').querySelectorAll('circle[data-nid]').forEach(function(c){
+      c.onclick=function(){
+        var nid=c.getAttribute('data-nid');
+        var n=null;sorted.forEach(function(x){if(x.id===nid)n=x});
+        if(n)jumpEntity({id:n.id,name:n.label});
+      };
+    });
+    $('graph-cnt').textContent='实体图：'+nodes.length+' 节点 / '+edges.length+' 边（limit=50 · min_count=10）';
+    S.loaded.graph=true;
+  }).catch(function(e){$('graph-svg').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+  jget(base()+'/entities?limit=6').then(function(d){
+    if(S.bank!==bk)return;
+    var items=(d&&d.items)||[];
+    $('elist').innerHTML=items.map(function(e,i){
+      return '<button class="eitem" data-i="'+i+'"><span>'+esc(e.canonical_name||e.id)+'</span><b>'+fmt(e.mention_count)+' 次 · since '+fmtDT(e.first_seen)+'</b></button>';
+    }).join('')||'<div class="muted">无实体</div>';
+    S.entItems=items;
+    document.querySelectorAll('#elist .eitem').forEach(function(el){
+      el.onclick=function(){var e=S.entItems[+el.getAttribute('data-i')];if(e)jumpEntity({id:e.id,name:e.canonical_name})};
+    });
+  },function(){});
 }
-$('f-docapply').onclick=loadDocs;
+function jumpEntity(e){
+  S.memEntity={id:e.id,name:e.name};S.memDoc=null;
+  renderExtras();
+  switchTab('v-search');
+  loadMemories(0);
+}
 
 /* ───────────── 知识页面 ───────────── */
 function flatNodes(roots){
@@ -787,6 +1162,8 @@ function loadPages(){
   $('pagetree').innerHTML='<div class="muted">加载中…</div>';
   jget(base()+'/pages/tree').then(function(d){
     var nodes=flatNodes(d&&(d.roots||d.pages));
+    S.pagesCache=nodes;
+    $('n-stale').textContent=fmt(nodes.filter(function(n){return n.is_stale}).length);
     var all=$('btn-export-all');
     all.onclick=function(ev){
       ev.preventDefault();
@@ -796,24 +1173,26 @@ function loadPages(){
         a.href=URL.createObjectURL(new Blob([JSON.stringify(exp,null,2)],{type:'application/json'}));
         a.download='hindsight-pages-export.json';
         document.body.appendChild(a);a.click();a.remove();
-      },function(e){all.textContent='⬇ 导出全部页面（失败：'+esc((e&&e.message)||e)+'）';setTimeout(function(){all.textContent='⬇ 导出全部页面（GET /pages/export）'},5000);});
+        all.textContent='⬇ 导出全部（GET /pages/export）';
+      },function(e){all.textContent='⬇ 导出全部（失败：'+esc((e&&e.message)||e)+'）';setTimeout(function(){all.textContent='⬇ 导出全部（GET /pages/export）'},5000);});
     };
     $('pagetree').innerHTML=nodes.map(function(n,i){
-      return '<div class="node" data-i="'+i+'">📄 '+esc(n.name||n.id)+(n.is_stale?' <span class="stale">陈旧</span>':'')+'</div>';
+      return '<button class="pnode" data-i="'+i+'"><span class="ind">📄</span>'+esc(n.name||n.id)+(n.is_stale?' <span class="stale">陈旧</span>':'')+'</button>';
     }).join('')||'<div class="ph">无页面</div>';
-    $('pagetree').querySelectorAll('.node').forEach(function(el){
+    document.querySelectorAll('#pagetree .pnode').forEach(function(el){
       el.onclick=function(){
-        $('pagetree').querySelectorAll('.node').forEach(function(x){x.classList.remove('on')});
-        el.classList.add('on');S.pageSel=nodes[+el.getAttribute('data-i')];loadPageDetail(S.pageSel);
+        document.querySelectorAll('#pagetree .pnode').forEach(function(x){x.classList.remove('sel')});
+        el.classList.add('sel');S.pageSel=nodes[+el.getAttribute('data-i')];loadPageDetail(S.pageSel);
       };
     });
+    S.loaded.pages=true;
   }).catch(function(e){$('pagetree').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
 }
 function loadPageDetail(n){
   if(!n)return;
   var ep=(S.pageEp=(S.pageEp||0)+1);
   var one=$('btn-export-one');
-  one.style.display='inline-block';
+  one.style.display='block';
   one.setAttribute('data-pid',n.id);
   one.textContent='⬇ 导出本页 .md';
   one.onclick=function(ev){
@@ -825,83 +1204,220 @@ function loadPageDetail(n){
       a.href=URL.createObjectURL(new Blob([md],{type:'text/markdown'}));
       a.download=(n.name||pid)+'.md';
       document.body.appendChild(a);a.click();a.remove();
-    }).catch(function(){alert('导出失败')});
+    }).catch(function(){one.textContent='导出失败';setTimeout(function(){one.textContent='⬇ 导出本页 .md'},3000)});
   };
-  $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧</span>':'')+'</h3><div class="muted">加载正文…</div></div>';
+  $('pageview').innerHTML='<div class="detail"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><b style="font-size:16px">'+esc(n.name)+'</b>'+(n.is_stale?'<span class="stale">陈旧</span>':'')+'</div><div class="muted">加载正文…</div></div>';
   jget(base()+'/pages/'+encodeURIComponent(n.id)).then(function(d){
     if(ep!==S.pageEp)return;
     var md=(d&&(d.markdown||d.body))||(typeof d==='string'?d:JSON.stringify(d,null,1));
-    $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧</span>':'')+'</h3>'
-      +'<div class="pagemd">'+esc(md)+'</div>'
-      +'<div class="epi">蒸馏页本质 = mental models。导出：点左侧「⬇ 导出本页 .md」（浏览器端落盘）；全部页面走 <code>GET /pages/export</code></div></div>';
+    $('pageview').innerHTML='<div class="detail">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap"><b style="font-size:16px">'+esc(n.name)+'</b>'+(n.is_stale?'<span class="stale">陈旧</span>':'')+'<span class="meta" style="margin-left:auto">蒸馏页本质 = mental model</span></div>'
+      +'<div class="md" id="pagemd">'+esc(md)+'</div>'
+      +'<div class="vercard"><b style="font-size:13px">版本历史</b><div class="muted" style="margin-top:6px">查询中…（GET /mental-models/{id}/history）</div></div>'
+      +'<div class="epi">数据源：<code>GET /pages/{page_id}</code>（markdown 原文渲染）；导出：上方「⬇ 导出本页 .md」；API 未提供刷新时间戳字段。</div></div>';
+    if(n.mental_model_id){
+      jget(base()+'/mental-models/'+encodeURIComponent(n.mental_model_id)+'/history').then(function(h){
+        if(ep!==S.pageEp)return;
+        var vc=$('pageview').querySelector('.vercard');if(!vc)return;
+        var list=(h&&h.length)?h:[];
+        if(!list.length){vc.innerHTML='<b style="font-size:13px">版本历史</b><div class="muted" style="margin-top:6px">无历史快照（该页面尚无刷新历史）</div>';return}
+        var rows='<div class="vrow"><span class="b b-cur">当前版本</span><span>'+fmtDT(n.last_refreshed_at)+'</span><button class="vbtn" data-vi="-1">查看此版本</button></div>';
+        list.forEach(function(it,i){
+          rows+='<div class="vrow"><span class="vt">v'+(list.length-i)+'</span><span class="meta">快照 '+(i+1)+'/'+list.length+'</span><button class="vbtn" data-vi="'+i+'">查看此版本</button></div>';
+        });
+        vc.innerHTML='<b style="font-size:13px">版本历史</b>'+rows+'<div class="meta" style="margin-top:6px">数据源：GET /mental-models/{id}/history → previous_content 快照数组</div>';
+        vc.querySelectorAll('.vbtn').forEach(function(b){
+          b.onclick=function(){
+            var vi=+b.getAttribute('data-vi');
+            var c=(vi<0)?md:((list[vi]&&(list[vi].previous_content||list[vi].content))||'');
+            $('pagemd').textContent=c||'（该快照无正文内容）';
+          };
+        });
+      },function(){var vc=$('pageview').querySelector('.vercard');if(vc)vc.innerHTML='<b style="font-size:13px">版本历史</b><div class="muted" style="margin-top:6px">历史端点不可用</div>'});
+    }
   }).catch(function(e){if(ep!==S.pageEp)return;$('pageview').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
 }
 
-/* ───────────── 召回测试 ───────────── */
+/* ───────────── 证据原文 ───────────── */
+function loadDocs(){
+  if(!S.bank)return;
+  var bk=S.bank;
+  $('doclist').innerHTML='<div class="muted">加载中…</div>';
+  var q=$('f-docq').value.trim();
+  jget(base()+'/documents?limit=40&offset=0'+(q?'&q='+encodeURIComponent(q):'')).then(function(d){
+    if(S.bank!==bk)return;
+    S.docList=(d&&d.items)||[];
+    $('doclist').innerHTML=S.docList.map(function(doc,i){
+      var isConv=/conversation/.test(doc.id||'');
+      var mt=[];
+      mt.push('<span class="b '+(isConv?'b-run':'b-cur')+'" style="font-size:10.5px">'+(isConv?'conversation':'document')+'</span>');
+      if(doc.text_length!=null)mt.push('<span>'+fmt(doc.text_length)+' 字</span>');
+      if(doc.memory_unit_count!=null)mt.push('<span>'+doc.memory_unit_count+' 卡片</span>');
+      var rp=doc.retain_params||{},md=rp.metadata||{};
+      if(md.repo)mt.push('<span>repo: '+esc(md.repo)+'</span>');
+      mt.push('<span>'+fmtDT(doc.updated_at||doc.created_at)+'</span>');
+      return '<button class="mitem" data-i="'+i+'"><div class="mm" style="margin-bottom:6px">'+mt.join('')+'</div>'
+        +'<div class="tx" style="font-size:12.5px">'+esc(doc.id)+'</div></button>';
+    }).join('')||'<div class="ph">无文档</div>';
+    document.querySelectorAll('#doclist .mitem').forEach(function(el){
+      el.onclick=function(){
+        document.querySelectorAll('#doclist .mitem').forEach(function(x){x.classList.remove('sel')});
+        el.classList.add('sel');
+        loadDocDetail(S.docList[+el.getAttribute('data-i')]);
+      };
+    });
+    if(S.pendingDoc){
+      var idx=-1;S.docList.forEach(function(doc,i){if(doc.id===S.pendingDoc)idx=i});
+      S.pendingDoc=null;
+      if(idx>=0){var el2=document.querySelector('#doclist .mitem[data-i="'+idx+'"]');if(el2)el2.click()}
+      else $('docview').innerHTML='<div class="ph">未在当前列表找到该文档：可用左上过滤框输入完整 id 精确查找。</div>';
+    }
+    S.loaded.docs=true;
+  }).catch(function(e){$('doclist').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+}
+$('f-docapply').onclick=loadDocs;
+$('f-docq').addEventListener('keydown',function(e){if(e.key==='Enter')loadDocs()});
+function loadDocDetail(doc){
+  if(!doc)return;
+  var ep=(S.docEp=(S.docEp||0)+1);
+  $('docview').innerHTML='<div class="detail"><div class="muted">加载 '+esc(doc.id)+' …</div></div>';
+  jget(base()+'/documents/'+encodeURIComponent(doc.id)).then(function(d){
+    if(ep!==S.docEp)return;
+    var raw=(d&&(d.original_text||d.content||''))||'';
+    var lines=[];
+    String(raw).split('\n').forEach(function(ln){
+      ln=ln.trim();if(!ln)return;
+      try{lines.push(JSON.parse(ln))}catch(e){/* 非 JSONL 行忽略 */}
+    });
+    var bub=lines.map(function(o){
+      var role=String(o.role||'system').toLowerCase();
+      var cls=role==='user'?'user':(role==='assistant'?'assistant':'tool');
+      var who=role==='user'?'用户':(role==='assistant'?'助手':(role==='system'?'system 行':(role==='tool'?('工具'+(o.name?' · '+o.name:'')):role)));
+      var ts=o.timestamp!=null?esc(String(o.timestamp).slice(0,19)):'';
+      return '<div class="bub '+cls+'">'+(who||ts?'<div class="who">'+esc(who)+(ts?' · '+ts:'')+'</div>':'')+esc(trunc(o.content!=null?o.content:o.text||'',1200))+'</div>';
+    }).join('');
+    if(!lines.length)bub='<div class="ph">original_text 为空或非 JSONL</div>';
+    var tot=String(raw).length;
+    $('docview').innerHTML='<div class="detail">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap"><b style="font-size:14px" class="mono">'+esc(doc.id)+'</b>'
+      +'<span class="meta" style="margin-left:auto">'+(doc.memory_unit_count!=null?doc.memory_unit_count+' 记忆单元 · ':'')+'retain '+fmtDT(doc.created_at)+'</span></div>'
+      +'<div class="bubwrap" id="bubwrap">'+bub+'<div class="explabel" id="explabel">▼ 展开全文（'+fmt(tot)+' 字 · JSONL 气泡，点击展开后内部滚动）</div></div>'
+      +'<div class="sect" style="font-size:14px">分块（GET /documents/{id}/chunks）</div><div id="d-chunks"><div class="muted">加载中…</div></div>'
+      +'<div class="sect" style="font-size:14px">处理事件（GET /documents/{id}/history）</div><div id="d-hist"><div class="muted">加载中…</div></div>'
+      +'<div class="sect" style="font-size:14px">派生记忆</div><div id="d-derived"><div class="muted">加载中…</div></div>'
+      +'<div class="epi">数据源：<code>GET /documents/{id}</code> · original_text 为 JSONL（每行 {role,timestamp,content}）</div></div>';
+    var bw=$('bubwrap');
+    $('explabel').onclick=function(){bw.classList.toggle('open');$('explabel').textContent=bw.classList.contains('open')?'▲ 收起':'▼ 展开全文（'+fmt(tot)+' 字 · JSONL 气泡）'};
+    jget(base()+'/documents/'+encodeURIComponent(doc.id)+'/chunks').then(function(c){
+      if(ep!==S.docEp)return;
+      var its=(c&&(c.items||c.chunks))||[];
+      $('d-chunks').innerHTML=its.map(function(k){
+        return '<div class="chunkrow"><span class="cn">#'+esc(k.chunk_index!=null?k.chunk_index:'—')+'</span><span>'+esc(trunc(k.chunk_text||k.text||'',160))+'</span></div>';
+      }).join('')||'<div class="muted">无分块</div>';
+    },function(){if(ep===S.docEp)$('d-chunks').innerHTML='<div class="muted">分块端点不可用</div>'});
+    jget(base()+'/documents/'+encodeURIComponent(doc.id)+'/history').then(function(h){
+      if(ep!==S.docEp)return;
+      var its=(h&&(h.items||[]))||[];
+      if(!its.length){$('d-hist').innerHTML='<div class="muted">无处理事件</div>';return}
+      $('d-hist').innerHTML=its.slice(0,12).map(function(e2){
+        var oc=(e2.observations_created&&e2.observations_created.count)||0;
+        var ou=(e2.observations_updated&&e2.observations_updated.count)||0;
+        var fa=e2.facts_added!=null?e2.facts_added:null;
+        var sum=esc(e2.kind||e2.type||'event')+' · '+(fa!=null?('facts +'+fa+' '):'')+(e2.facts_removed?('−'+e2.facts_removed+' '):'')+(oc?('observations +'+oc+' '):'')+(ou?('updated '+ou):'');
+        return '<div class="evrow"><span class="et">'+fmtDT(e2.created_at)+'</span><span>'+sum+'</span></div>';
+      }).join('')+'<div class="muted" style="margin-top:6px">共 '+fmt((h&&h.total)!=null?h.total:its.length)+' 条事件，展示最近 '+Math.min(12,its.length)+' 条</div>';
+    },function(){if(ep===S.docEp)$('d-hist').innerHTML='<div class="muted">事件端点不可用</div>'});
+    jget(base()+'/memories/list?document_id='+encodeURIComponent(doc.id)+'&limit=1').then(function(m){
+      if(ep!==S.docEp)return;
+      var t=(m&&m.total)||0;
+      $('d-derived').innerHTML=t?('<span class="meta">本页派生的记忆 <b>'+fmt(t)+'</b> 条 · <u id="d-derived-go" style="color:var(--info);cursor:pointer">→ 去检索页按本文档过滤</u></span>')
+        :'<div class="muted">本页暂无派生记忆</div>';
+      var go=$('d-derived-go');
+      if(go)go.onclick=function(){S.memDoc=doc.id;S.memEntity=null;renderExtras();switchTab('v-search');loadMemories(0)};
+    },function(){if(ep===S.docEp)$('d-derived').innerHTML='<div class="muted">—</div>'});
+  }).catch(function(e){if(ep!==S.docEp)return;$('docview').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+}
+
+/* ───────────── 召回实验室 ───────────── */
 $('recall-go').onclick=function(){
   var q=$('recall-q').value.trim();
   if(!q){$('recall-q').focus();return}
   if(S.recallBusy)return;S.recallBusy=true;
   var budget=(document.querySelector('input[name="rb"]:checked')||{}).value||'low';
   var trace=$('recall-trace').checked;
-  $('recall-out').hidden=true;$('recall-prog').hidden=false;
+  $('recall-out').hidden=true;$('recall-out-title').hidden=true;$('recall-prog').hidden=false;
+  $('recall-steps').hidden=false;
+  var steps=document.querySelectorAll('#recall-steps .step .sdot');
+  steps.forEach(function(d,i){d.className='sdot '+(i===0?'run':'idle')});
   var t0=Date.now();
-  $('recall-progtext').textContent='召回执行中… 已 0s / 预算 '+budget+'（budget=low 实测 40–110s）';
+  $('recall-progtext').textContent='召回执行中… 已 0s / 预算 '+budget+'（实测 40–110s）· 页面超时 150s';
   clearInterval(S.opsTimer);S.opsTimer=setInterval(function(){
-    $('recall-progtext').textContent='召回执行中… 已 '+Math.round((Date.now()-t0)/1000)+'s / 预算 '+budget;
+    $('recall-progtext').textContent='召回执行中… 已 '+Math.round((Date.now()-t0)/1000)+'s / 预算 '+budget+'（实测 40–110s）· 页面超时 150s';
   },1000);
   jpost(base()+'/memories/recall',{query:q,budget:budget,trace:trace,prefer_observations:true},150000)
   .then(function(d){
-    clearInterval(S.opsTimer);S.recallBusy=false;$('recall-prog').hidden=true;$('recall-out').hidden=false;
+    clearInterval(S.opsTimer);S.recallBusy=false;$('recall-prog').hidden=true;
     var items=(d&&(d.results||d.memories||d.items))||[];
+    steps.forEach(function(sd){sd.className='sdot'});
+    $('recall-out').hidden=false;$('recall-out-title').hidden=false;
     $('recall-list').innerHTML=items.map(function(r){
-      var sc=r.scores||{},score=(sc.final!=null)?sc.final:(r.score!=null?r.score:(r.similarity!=null?r.similarity:null));
-      var head='<span class="badge '+badgeCls(r.fact_type||r.type)+'">'+esc(r.fact_type||r.type||'result')+'</span>';
-      if(score!=null)head+='<span class="scorebar"><i style="width:'+Math.min(100,Math.max(2,Math.round(score*100)))+'%"></i></span><span class="muted">final '+score+(sc.reranker!=null?' · rerank '+sc.reranker:'')+(sc.semantic!=null?' · sem '+sc.semantic:'')+'</span>';
+      var sc=r.scores||{},score=(sc.final!=null)?sc.final:(r.score!=null?r.score:null);
+      var head='<span class="b '+badgeCls(r.fact_type||r.type)+'">'+esc(r.fact_type||r.type||'result')+'</span>';
+      if(score!=null)head+='<span class="b b-hit">语义命中</span><span class="meta" style="margin-left:auto">final '+score+(sc.reranker!=null?' · rerank '+sc.reranker:'')+(sc.semantic!=null?' · sem '+sc.semantic:'')+'</span>';
+      var bar=(score!=null)?'<div class="scorebar"><i style="width:'+Math.min(100,Math.max(2,Math.round(score*100)))+'%"></i></div>':'';
       var meta=[];
-      if(r.source_facts)meta.push('source_facts: '+esc(JSON.stringify(trunc(JSON.stringify(r.source_facts),120))));
-      if(r.document_id)meta.push('doc: '+esc(trunc(r.document_id,24)));
-      return '<div class="mem"><div class="head">'+head+'</div><div class="text">'+esc(trunc(r.text||r.content||JSON.stringify(r),600))+'</div>'
-        +(meta.length?'<div class="meta">'+meta.map(function(x){return '<span>'+x+'</span>'}).join('')+'</div>':'')+'</div>';
+      if(r.document_id)meta.push('<span class="mono">'+esc(trunc(r.document_id,30))+'</span>');
+      return '<div class="card" style="margin-bottom:9px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+head+'</div>'
+        +'<div style="font-size:13.5px;margin:8px 0 4px;word-break:break-word">'+esc(trunc(r.text||r.content||JSON.stringify(r),600))+'</div>'+bar
+        +(meta.length?'<div class="meta" style="margin-top:6px">'+meta.join(' · ')+'</div>':'')+'</div>';
     }).join('')||'<div class="ph">无结果（原始返回见轨迹）'+(d&&d.answer?('<br>answer: '+esc(trunc(d.answer,400))):'')+'</div>';
     if(trace&&d&&d.trace){
       $('tracefold').hidden=false;$('tracepre').textContent=JSON.stringify(d.trace,null,1).slice(0,8000);
     }else{$('tracefold').hidden=true}
   }).catch(function(e){
-    clearInterval(S.opsTimer);S.recallBusy=false;$('recall-prog').hidden=true;$('recall-out').hidden=false;
-    $('recall-list').innerHTML='<div class="ph">召回失败：'+esc(e.message||e)+'（长任务 150s 超时；budget=low 实测 40–110s）</div>';
+    clearInterval(S.opsTimer);S.recallBusy=false;$('recall-prog').hidden=true;
+    steps.forEach(function(sd,i){sd.className='sdot '+(i<1?'':'idle')});
+    $('recall-out').hidden=false;$('recall-out-title').hidden=false;
+    $('recall-list').innerHTML='<div class="ph">召回失败：'+esc(e.message||e)+'（长任务 150s 超时；budget=low 实测 40–110s；可换关键词或降预算重试）</div>';
   });
 };
 $('tracefold').onclick=function(){this.classList.toggle('open')};
 
-/* ───────────── 后台队列 ───────────── */
+/* ───────────── 运行与队列 ───────────── */
 function loadOps(){
   if(!S.bank)return;
   var bk=S.bank;
-  var st=$('ops-status').value;
+  var st=$('ops-status').value,tp=$('ops-type').value;
   $('opslist').innerHTML='<div class="muted">加载中…</div>';
   jget(base()+'/operations?limit=30&offset=0'+(st?'&status='+encodeURIComponent(st):'')).then(function(d){
     if(S.bank!==bk)return;
     var ops=(d&&d.operations)||[];
+    if(tp)ops=ops.filter(function(o){return (o.task_type||o.operation_type)===tp});
     $('opslist').innerHTML=ops.map(function(o){
       var failed=o.status==='failed';
       var pr=o.progress||{};
       var pct=(pr.total>0)?Math.round((pr.processed||0)/pr.total*100):((o.status==='completed')?100:0);
-      return '<div class="opcard'+(failed?' failed':'')+'"><div class="l1">'
-        +'<span class="badge '+(failed?'b-invalid':'b-valid')+'" style="font-size:10px">'+esc(o.status||'—')+'</span>'
-        +'<b>'+esc(o.task_type||o.operation_type||'—')+'</b>'
-        +(o.document_id?'<span class="muted">document_id: '+esc(trunc(o.document_id,36))+'</span>':'')
-        +(o.mental_model_id?'<span class="muted">'+esc(trunc(o.mental_model_id,18))+'</span>':'')
-        +'<span class="muted">'+fmtDT(o.updated_at||o.created_at)+'</span>'
-        +(failed?'<span class="spacer"></span><button class="ghost dis" title="MVP 只读（方案 D2 拍板后才启用写操作）">↻ 重试这条</button>':'')
+      var cls=o.status==='completed'?'b-done':(failed?'b-fail':(o.status==='processing'?'b-run':'b-wait'));
+      return '<div class="opcard'+(failed?' failed':'')+'"><div class="oh">'
+        +'<span class="b '+cls+'">'+esc(o.status||'—')+'</span>'
+        +'<span class="ot">'+esc(o.task_type||o.operation_type||'—')+'</span>'
+        +(o.document_id?'<span class="muted">document: '+esc(trunc(o.document_id,34))+'</span>':'')
+        +(o.mental_model_id?'<span class="muted">'+esc(trunc(o.mental_model_id,20))+'</span>':'')
+        +'<span class="meta" style="margin-left:auto">'+fmtDT(o.updated_at||o.created_at)+(o.retry_count?(' · 重试 '+o.retry_count):'')+'</span>'
+        +(failed?'<button class="btn ghost dis" title="只读（引擎未开放该写端点）">↻ 重试这条</button>':'')
         +'</div>'
-        +(pr.stage?'<div class="pr">stage: '+esc(pr.stage)+' <span class="pbar"><i style="width:'+pct+'%"></i></span> '+(pr.processed!=null?pr.processed:'—')+'/'+(pr.total!=null?pr.total:'—')+'</div>':'')
-        +(failed&&o.error_message?'<div class="err">'+esc(trunc(o.error_message,300))+'</div>':'')
+        +(pr.stage?'<div class="meta" style="margin-top:7px">stage: '+esc(pr.stage)+(pr.processed!=null?(' · '+(pr.processed!=null?pr.processed:'—')+'/'+(pr.total!=null?pr.total:'—')):'')+'</div><div class="pbar"><i style="width:'+pct+'%"></i></div>':'')
+        +(failed&&o.error_message?'<div class="errbox">'+esc(trunc(o.error_message,300))+'</div>':'')
         +'</div>';
     }).join('')||'<div class="ph">无操作记录</div>';
+    var dist={};(d&&d.operations||[]).forEach(function(o){var k=o.task_type||o.operation_type||'—';dist[k]=(dist[k]||0)+1});
+    var dk=Object.keys(dist);
+    $('ops-dist').innerHTML=dk.length?('任务类型分布（近 30 条'+(st?' · 已按状态过滤':'')+'）：<b>'+dk.map(function(k){return esc(k)+' '+dist[k]}).join(' · ')+'</b>'):'';
+    S.loaded.ops=true;
   }).catch(function(e){$('opslist').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
 }
 $('ops-status').onchange=loadOps;
+$('ops-type').onchange=loadOps;
 
 /* ───────────── 设置（白名单 PATCH · 两步确认 · 快照回滚） ───────────── */
 var CFG_FIELDS=[
@@ -919,7 +1435,7 @@ var CFG_FIELDS=[
  {key:'recall_include_chunks',label:'召回含原文块',code:'recall_include_chunks',card:'cfg-f-recall',ctrl:'bool',hint:'结果附带文档 chunk 原文'},
  {key:'retain_extraction_mode',label:'提取模式',code:'retain_extraction_mode',card:'cfg-f-retain',ctrl:'text',hint:'当前 concise；非法值引擎 400 整批拒绝（零写入）'},
  {key:'retain_default_strategy',label:'默认策略',code:'retain_default_strategy',card:'cfg-f-retain',ctrl:'text',hint:'留空=继承；retain_strategies 正文为插件回写区勿在此改'},
- {key:'store_document_text',label:'保存文档原文',code:'store_document_text',card:'cfg-f-retain',ctrl:'bool',hint:'「对话原文」页签的数据来源'},
+ {key:'store_document_text',label:'保存文档原文',code:'store_document_text',card:'cfg-f-retain',ctrl:'bool',hint:'「证据原文」页签的数据来源'},
  {key:'enable_auto_consolidation',label:'自动归纳',code:'enable_auto_consolidation',card:'cfg-f-cons',ctrl:'bool',hint:'后台自动把记忆整合成 observations'},
  {key:'enable_observations',label:'观察蒸馏',code:'enable_observations',card:'cfg-f-cons',ctrl:'bool',hint:'知识页面/observations 的开关'},
  {key:'entities_allow_free_form',label:'允许自由实体',code:'entities_allow_free_form',card:'cfg-f-cons',ctrl:'bool',hint:'实体抽取允许白名单外新实体'},
@@ -1022,16 +1538,13 @@ function loadSettings(){
   var bk=S.bank;
   $('cfg-msg').hidden=true;
   ['cfg-f-id','cfg-f-recall','cfg-f-retain','cfg-f-cons','cfg-f-misc','cfg-f-disp'].forEach(function(id){$(id).innerHTML='<div class="muted">加载中…</div>'});
-  jget('/v1/version',8000).then(function(v){
+  syncCfgLock();
+  jget(base()+'/config').then(function(c){
     if(S.bank!==bk)return;
-    S.cfgGate=!(v&&v.features&&v.features.bank_config_api);
-    syncCfgLock();
-    return jget(base()+'/config').then(function(c){
-      if(S.bank!==bk)return;
-      S.cfgBase={cfg:c.config||{},overrides:c.overrides||{}};
-      S.cfgSnap=JSON.parse(JSON.stringify(S.cfgBase.overrides));
-      renderSettings();
-    });
+    S.cfgBase={cfg:c.config||{},overrides:c.overrides||{}};
+    S.cfgSnap=JSON.parse(JSON.stringify(S.cfgBase.overrides));
+    renderSettings();
+    S.cfgLoaded=true;
   }).catch(function(e){
     if(S.bank!==bk)return;
     $('cfg-meta').textContent='加载失败';
@@ -1042,6 +1555,7 @@ function loadSettings(){
 function syncCfgLock(){
   var el=$('v-settings');if(!el)return;
   el.classList.toggle('cfg-off',!!(S.cfgGate||S.cfgOffline||S.cfgBusy));
+  $('cfg-gate').hidden=!S.cfgGate;
 }
 function cfgMsg(t,cls){var m=$('cfg-msg');m.hidden=false;m.className='cfg-msg '+(cls||'');m.textContent=t}
 function openModal(title,bodyHtml){
@@ -1055,7 +1569,10 @@ function closeModal(){
   if(S.mdTimer){clearInterval(S.mdTimer);S.mdTimer=null}
   S.mdAction=null;
 }
-document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('modal-backdrop').hidden)closeModal()});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&!$('modal-backdrop').hidden)closeModal();
+  if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();$('gq').focus()}
+});
 function cfgDiffRows(u){
   var rows='';
   CFG_FIELDS.forEach(function(f){
@@ -1126,6 +1643,8 @@ $('cfg-reload').onclick=function(){loadSettings()};
 $('cfg-revert').onclick=function(){renderSettings();cfgMsg('已放弃未保存的编辑（服务器未变）')};
 $('cfg-snap').onclick=cfgRestoreModal;
 $('cfg-foldbtn').onclick=function(){var p=$('cfg-foldpre');p.hidden=!p.hidden;var n=(S.roKeys||[]).length;this.textContent=(p.hidden?'▸':'▾')+' 展开全部只读键（'+n+'）'};
+
+/* ───────────── 帮助目录 ───────────── */
 (function(){
   var toc=$('help-toc');if(!toc)return;
   var items=document.querySelectorAll('#help-body .help-sec');
@@ -1139,24 +1658,40 @@ $('cfg-foldbtn').onclick=function(){var p=$('cfg-foldpre');p.hidden=!p.hidden;va
   });
 })();
 
-/* ───────────── 启动/轮询 ───────────── */
+/* ───────────── 全局搜索 / 注意力跳转 ───────────── */
+function doGSearch(){
+  var v=$('gq').value.trim();
+  if(!v)return;
+  $('f-q').value=v;
+  S.memEntity=null;S.memDoc=null;renderExtras();
+  switchTab('v-search');
+  loadMemories(0);
+}
+$('gq').addEventListener('keydown',function(e){if(e.key==='Enter')doGSearch()});
+$('a-failed').onclick=function(){switchTab('v-ops');$('ops-status').value='failed';loadOps()};
+$('a-proc').onclick=function(){switchTab('v-ops');$('ops-status').value='processing';loadOps()};
+$('a-stale').onclick=function(){switchTab('v-pages');if(!S.loaded.pages)loadPages()};
+
+/* ───────────── 启动 / 轮询 / 主题 ───────────── */
 function boot(skipBanks){
-  return (skipBanks?Promise.resolve():loadBanks()).then(function(){return loadVitals()}).then(function(){probeLan()})
-    .catch(function(e){setOffline(true,'连接失败 · '+esc(String((e&&e.message)||e)))});
+  return (skipBanks?Promise.resolve():loadBanks()).then(function(){return loadVersion()}).then(function(){return loadVitals()}).then(function(){probeLan()})
+    .catch(function(e){setOffline(true,'连接失败 · '+String((e&&e.message)||e))});
 }
 $('btn-refresh').onclick=function(){loadVitals();probeLan()};
-$('autoref').onchange=function(e){
+function setAutoref(on){
+  S.autoref=on;
+  $('sb-autoref').innerHTML='自动刷新 <b>'+(on?'30s ✓':'已关')+'</b>';
   if(S.timer){clearInterval(S.timer);S.timer=null}
-  if(e.target.checked)S.timer=setInterval(function(){loadVitals()},30000);
-};
-/* ───────────── 主题（自动=跟随系统/DSH 客户端 · 浅色 · 深色） ───────────── */
+  if(on)S.timer=setInterval(function(){loadVitals()},30000);
+}
+$('sb-autoref').onclick=function(){setAutoref(!S.autoref)};
 var THEME_KEY='hsb-theme';
 function applyTheme(){
   var mode;
   try{mode=localStorage.getItem(THEME_KEY)||'auto'}catch(e){mode='auto'}
   var light=mode==='light'||(mode==='auto'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches);
   document.documentElement.setAttribute('data-theme',light?'light':'dark');
-  $('theme-btn').textContent='🌓 主题：'+(mode==='auto'?'自动':(mode==='light'?'浅色':'深色'));
+  $('theme-btn').title='主题三档循环：自动（跟随系统）/浅色/深色 · 当前 '+(mode==='auto'?'自动':(mode==='light'?'浅色':'深色'))+' · localStorage 持久化';
 }
 $('theme-btn').onclick=function(){
   var order=['auto','light','dark'];
@@ -1176,8 +1711,8 @@ if(window.matchMedia){
   try{if(mq.addEventListener)mq.addEventListener('change',onScheme);else if(mq.addListener)mq.addListener(onScheme)}catch(e){}
 }
 applyTheme();
-S.timer=setInterval(function(){loadVitals()},30000);
-(function(){var id=(location.hash||'').replace(/^#/,'');if(id&&TABS.some(function(t){return t[0]===id}))switchTab(id,true)})();
+setAutoref(true);
+(function(){var id=(location.hash||'').replace(/^#/,'');if(id&&NAVV.indexOf(id)>=0)switchTab(id,true)})();
 window.addEventListener('beforeunload',function(e){if(S.cfgDirtyN>0){e.preventDefault();e.returnValue=''}});
 boot();
 </script>
