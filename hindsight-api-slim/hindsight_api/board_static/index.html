@@ -52,6 +52,9 @@ html[data-theme="light"]{
   --banner-bg:rgba(231,76,60,.07); --banner-line:rgba(231,76,60,.35); --banner-ink:#b03a2e;
   --err-bg:rgba(231,76,60,.06); --err-ink:#b03a2e;
   --stale-bg:rgba(243,156,18,.16); --stale-ink:#b9770e;
+  --acc:#17795e; --acc-deep:#0f5a46;
+  --t-world:#2471a3; --t-exp:#17795e; --t-obs:#6a4f9e;
+  --p1:#a56a0a; --p2:#2471a3;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--body-bg-color);background-image:var(--body-bg-image);background-attachment:fixed;color:var(--ink1);font:14px/1.55 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:12px}
@@ -401,11 +404,11 @@ function loadBanks(){
     if(!S.bank&&S.banks.length)S.bank=S.banks[0].bank_id;
     if(S.bank)sel.value=S.bank;
     $('t-bank').textContent='bank '+(S.bank||'—');
-    sel.onchange=function(){S.bank=sel.value;S.memPage=0;$('memlist').innerHTML='';$('doclist').innerHTML='';$('docview').innerHTML='<div class="ph">← 选择左侧文档…</div>';$('pagetree').innerHTML='';$('pageview').innerHTML='<div class="ph">← 选择左侧页面…</div>';$('opslist').innerHTML='';$('t-bank').textContent='bank '+S.bank;boot(true)};
+    sel.onchange=function(){S.bank=sel.value;S.epoch=(S.epoch||0)+1;S.docEp=(S.docEp||0)+1;S.pageEp=(S.pageEp||0)+1;S.memPage=0;$('memlist').innerHTML='';$('doclist').innerHTML='';$('docview').innerHTML='<div class="ph">← 选择左侧文档…</div>';$('pagetree').innerHTML='';$('pageview').innerHTML='<div class="ph">← 选择左侧页面…</div>';$('opslist').innerHTML='';$('t-bank').textContent='bank '+S.bank;boot(true)};
   });
 }
 function loadVitals(){
-  var b=base(),vf=0;
+  var b=base(),vf=0,ep=(S.epoch=(S.epoch||0)+1);
   return jget('/health',6000).then(function(h){
     setOffline(false);
     $('hpill').innerHTML='<i></i>'+esc((h.status||'healthy')+' · db '+(h.db_acquire_ms!=null?h.db_acquire_ms:'—')+'ms · 池 '+(h.db_pool_in_use!=null?h.db_pool_in_use:'—')+'/'+(h.db_pool_idle!=null?h.db_pool_idle:'—')+'/'+(h.db_pool_max!=null?h.db_pool_max:'—'));
@@ -414,6 +417,7 @@ function loadVitals(){
   .then(function(){
     if(!S.bank||$('hpill').classList.contains('bad'))return;
     return jget(b+'/stats').then(function(st){
+      if(ep!==S.epoch)return;
       S.stats=st;
       $('s-nodes').textContent=fmt(st.total_nodes);
       $('s-docs').textContent=fmt(st.total_documents);
@@ -438,16 +442,18 @@ function loadVitals(){
       $('q-total').textContent=fmt(obTotal);
     }).catch(function(){});
   }).then(function(){
-    return jget(b+'/stats/memories-timeseries').then(function(ts){renderTS(ts)},function(){vf++});
+    return jget(b+'/stats/memories-timeseries').then(function(ts){if(ep!==S.epoch)return;renderTS(ts)},function(){vf++});
   }).then(function(){
     return jget(b+'/tags').then(function(tg){
+      if(ep!==S.epoch)return;
       var items=(tg&&(tg.items||tg.tags))||[];
       items=items.slice().sort(function(a,c){return c.count-a.count});
-      $('tagtotal').textContent='· 共 '+fmt(items.length)+' 个标签（GET /tags）';
+      $('tagtotal').textContent='· 共 '+fmt(items.length)+' 个标签（/tags 全库口径，与卡片过滤的总数口径不同）';
       renderTags(items.slice(0,10),items.length?items[0].count:1);
       renderFilterChips(items.slice(0,12));
     },function(){vf++});
   }).then(function(){
+    if(ep!==S.epoch)return;
     $('upd').textContent='更新于 '+new Date().toTimeString().slice(0,8)+(vf?' · '+vf+' 项请求失败':'');
   });
 }
@@ -524,10 +530,12 @@ function memFilters(){
 }
 function loadMemories(page){
   if(!S.bank)return;
+  var bk=S.bank;
   S.memPage=page;
   var lim=20,off=page*lim;
   $('memlist').innerHTML='<div class="muted">加载中…</div>';
   jget(base()+'/memories/list?limit='+lim+'&offset='+off+memFilters()).then(function(d){
+    if(S.bank!==bk)return;
     var items=(d&&d.items)||[],total=(d&&d.total)||0;
     $('memlist').innerHTML=items.map(function(m){
       var tags=(m.tags||[]).slice(0,3).map(function(t){return '<span class="tagchip plain">'+esc(t)+'</span>'}).join('');
@@ -560,9 +568,11 @@ $('f-apply').onclick=function(){loadMemories(0)};
 /* ───────────── 对话原文 ───────────── */
 function loadDocs(){
   if(!S.bank)return;
+  var bk=S.bank;
   $('doclist').innerHTML='<div class="muted">加载中…</div>';
   var q=$('f-docq').value.trim();
   jget(base()+'/documents?limit=40&offset=0'+(q?'&q='+encodeURIComponent(q):'')).then(function(d){
+    if(S.bank!==bk)return;
     S.docList=(d&&d.items)||[];
     $('doclist').innerHTML=S.docList.map(function(doc,i){
       var isConv=/conversation/.test(doc.id||'');
@@ -585,8 +595,10 @@ function loadDocs(){
 }
 function loadDocDetail(doc){
   if(!doc)return;
+  var ep=(S.docEp=(S.docEp||0)+1);
   $('docview').innerHTML='<div class="card"><h3>'+esc(doc.id)+'</h3><div class="muted">加载 original_text…</div></div>';
   jget(base()+'/documents/'+encodeURIComponent(doc.id)).then(function(d){
+    if(ep!==S.docEp)return;
     var raw=(d&&(d.original_text||d.content||''))||'';
     var lines=[],bubbles='';
     String(raw).split('\n').forEach(function(ln){
@@ -603,7 +615,7 @@ function loadDocDetail(doc){
     });
     $('docview').innerHTML='<div class="card"><h3>original_text 渲染（JSONL 按 role 着色）· '+lines.length+' 行</h3>'+bubbles
       +'<div class="epi">数据源：<code>GET /documents/{id}</code> · original_text 为 JSONL（每行 {role,timestamp,content}）</div></div>';
-  }).catch(function(e){$('docview').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+  }).catch(function(e){if(ep!==S.docEp)return;$('docview').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
 }
 $('f-docapply').onclick=loadDocs;
 
@@ -641,6 +653,7 @@ function loadPages(){
 }
 function loadPageDetail(n){
   if(!n)return;
+  var ep=(S.pageEp=(S.pageEp||0)+1);
   var one=$('btn-export-one');
   one.style.display='inline-block';
   one.setAttribute('data-pid',n.id);
@@ -658,11 +671,12 @@ function loadPageDetail(n){
   };
   $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧</span>':'')+'</h3><div class="muted">加载正文…</div></div>';
   jget(base()+'/pages/'+encodeURIComponent(n.id)).then(function(d){
+    if(ep!==S.pageEp)return;
     var md=(d&&(d.markdown||d.body))||(typeof d==='string'?d:JSON.stringify(d,null,1));
     $('pageview').innerHTML='<div class="card"><h3>'+esc(n.name)+' '+(n.is_stale?'<span class="stale">陈旧</span>':'')+'</h3>'
       +'<div class="pagemd">'+esc(md)+'</div>'
       +'<div class="epi">蒸馏页本质 = mental models。导出：点左侧「⬇ 导出本页 .md」（浏览器端落盘）；全部页面走 <code>GET /pages/export</code></div></div>';
-  }).catch(function(e){$('pageview').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+  }).catch(function(e){if(ep!==S.pageEp)return;$('pageview').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
 }
 
 /* ───────────── 召回测试 ───────────── */
@@ -705,9 +719,11 @@ $('tracefold').onclick=function(){this.classList.toggle('open')};
 /* ───────────── 后台队列 ───────────── */
 function loadOps(){
   if(!S.bank)return;
+  var bk=S.bank;
   var st=$('ops-status').value;
   $('opslist').innerHTML='<div class="muted">加载中…</div>';
   jget(base()+'/operations?limit=30&offset=0'+(st?'&status='+encodeURIComponent(st):'')).then(function(d){
+    if(S.bank!==bk)return;
     var ops=(d&&d.operations)||[];
     $('opslist').innerHTML=ops.map(function(o){
       var failed=o.status==='failed';
