@@ -117,6 +117,10 @@ select.bankpill{font-size:12px;color:var(--ink2);background:var(--surface2);bord
 .statrow .st .l{font-size:12px;color:var(--ink3);margin-top:2px}
 .tagchips{display:flex;flex-wrap:wrap;gap:7px}
 .tagchips .tc{font-size:12px;font-family:var(--mono);color:var(--ink2);background:var(--surface2);border-radius:6px;padding:3px 9px}
+.fgroups{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin:2px 0 10px}
+.fglabel{font-size:12px;color:var(--ink2);padding:4px 0;white-space:nowrap}
+.fgroups .tc{cursor:pointer}
+.fgroups .tc b{color:var(--acc);font-weight:600}
 .tc b{color:var(--ink1)}
 .tagchips .tc.sel{color:var(--acc);background:var(--acc-soft);outline:1px solid rgba(46,155,123,.4);cursor:pointer}
 .tagchips .tc.click{cursor:pointer}
@@ -401,6 +405,7 @@ button.dis{opacity:.45;cursor:not-allowed}
           <button class="btn" id="f-apply">搜索</button><button class="btn ghost" id="f-clear">清除</button>
         </div>
         <div class="transrow"><span>请求模式：<b>服务端过滤</b></span><span>实际执行：<b>type + state + tags + q → GET /memories/list</b></span></div>
+        <div class="fgroups"><span class="fglabel">按项目分组（署名标签 project:*）：</span><span id="f-proj" style="display:contents"></span></div>
 
         <div class="mgrid">
           <div>
@@ -670,7 +675,7 @@ function jpatch(url,body,to){var c=new AbortController();var t=setTimeout(functi
       return j})},function(e){clearTimeout(t);throw e});}
 
 var S={bank:null,banks:[],stats:null,timer:null,memPage:0,docList:[],pageSel:null,opsTimer:null,
-  tab:null,tagItems:null,pagesCache:null,scopesN:null,memEntity:null,memDoc:null,obsTag:null,obsPage:0,
+  tab:null,tagItems:null,pagesCache:null,scopesN:null,memEntity:null,memDoc:null,obsTag:null,obsPage:0,projTag:null,
   autoref:true,version:null,loaded:{},recallBusy:false,memItems:[],obsItems:[],entItems:[],memHist:null,pendingDoc:null,
   cfgGate:false,cfgOffline:false,cfgBusy:false,cfgLoaded:false,cfgDirtyN:0,cfgBase:null,cfgSnap:null,cfgCtrl:{},mdTimer:null,mdAction:null,roKeys:[]};
 
@@ -794,6 +799,7 @@ function loadVitals(){
       $('h-tags').textContent=fmt(items.length);
       renderHomeTags(items.slice(0,5));
       renderObsChips();
+      renderProjChips();
     },function(){vf++});
   }).then(function(){
     if(!S.bank||$('hpill').classList.contains('bad'))return;
@@ -903,6 +909,7 @@ function stateCls(s){return s==='invalidated'?'b-invalid':'b-valid'}
 function memFilters(){
   var p=[];var type=$('f-type').value,state=$('f-state').value;
   var tags=[].slice.call(document.querySelectorAll('#f-tags .tc.sel')).map(function(c){return c.getAttribute('data-t')});
+  if(S.projTag&&tags.indexOf(S.projTag)<0)tags.push(S.projTag);
   var time=$('f-time').value,q=$('f-q').value.trim();
   if(type)p.push('type='+encodeURIComponent(type));
   if(state)p.push('state='+encodeURIComponent(state));
@@ -1043,8 +1050,28 @@ function jumpMem(id){
 $('f-apply').onclick=function(){loadMemories(0)};
 $('f-clear').onclick=function(){
   $('f-type').value='';$('f-state').value='';$('f-time').value='';$('f-q').value='';
-  S.memEntity=null;S.memDoc=null;renderExtras();loadMemories(0);
+  S.memEntity=null;S.memDoc=null;S.projTag=null;renderExtras();renderProjChips();loadMemories(0);
 };
+
+function renderProjChips(){
+  var host=$('f-proj');if(!host)return;
+  var items=(S.tagItems||[]).filter(function(t){return /^project:/.test(t.tag)});
+  if(!items.length){host.innerHTML='<span class="muted" style="font-size:12px">暂无 project:* 署名标签</span>';return}
+  var html='<span class="tc click'+(S.projTag?'':' sel')+'" data-t="">全部</span>';
+  items.forEach(function(t){
+    var short=t.tag.replace(/^project:/,'');
+    html+='<span class="tc click'+(S.projTag===t.tag?' sel':'')+'" data-t="'+esc(t.tag)+'" title="按 '+esc(t.tag)+' 过滤">'+esc(short)+' <b>'+fmt(t.count)+'</b></span>';
+  });
+  host.innerHTML=html;
+  host.querySelectorAll('.tc').forEach(function(c){
+    c.onclick=function(){
+      var t=c.getAttribute('data-t')||null;
+      S.projTag=(t&&S.projTag!==t)?t:null;
+      renderProjChips();
+      loadMemories(0);
+    };
+  });
+}
 
 /* ───────────── 观察流 ───────────── */
 function renderObsChips(){
