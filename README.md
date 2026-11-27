@@ -1,3 +1,10 @@
+> [!WARNING]
+> **仓库状态：已归档（2026-11-27）**
+>
+> 本 fork 的 `hindsight-board` 分支承载了「Hindsight 记忆看板」的完整工程实现（/ui 看板、模型服务设置、Origin 白名单中间件等，见该分支 commit 链与文档）。
+> 2026-11-27 起本机 Hindsight 记忆系统已退役停用——**这不是失败的项目，而是不再匹配当前需求**；仓库保留作工程记录与潜在复用，已置只读归档。
+> 上游项目：[vectorize-io/hindsight](https://github.com/vectorize-io/hindsight)（fork 内引擎改动均为分支上的增量，未改上游语义）。
+
 <div align="center">
 
 ![Hindsight Banner](./hindsight-docs/static/img/hindsight-github-banner.png)
