@@ -121,6 +121,7 @@ select.bankpill{font-size:12px;color:var(--ink2);background:var(--surface2);bord
 .fglabel{font-size:12px;color:var(--ink2);padding:4px 0;white-space:nowrap}
 .fgroups .tc{cursor:pointer}
 .fgroups .tc b{color:var(--acc);font-weight:600}
+.pnode.pfolder{font-weight:600}
 .tc b{color:var(--ink1)}
 .tagchips .tc.sel{color:var(--acc);background:var(--acc-soft);outline:1px solid rgba(46,155,123,.4);cursor:pointer}
 .tagchips .tc.click{cursor:pointer}
@@ -1227,16 +1228,30 @@ function loadPages(){
       },function(e){all.textContent='⬇ 导出全部（失败：'+esc((e&&e.message)||e)+'）';setTimeout(function(){all.textContent='⬇ 导出全部（GET /pages/export）'},5000);});
     };
     $('pagetree').innerHTML=nodes.map(function(n,i){
-      return '<button class="pnode" data-i="'+i+'"><span class="ind">📄</span>'+esc(n.name||n.id)+(n.is_stale?' <span class="stale">陈旧</span>':'')+'</button>';
+      var isF=(n.kind==='folder')||n.is_folder;
+      return '<button class="pnode'+(isF?' pfolder':'')+'" data-i="'+i+'"><span class="ind">'+(isF?'📁':'📄')+'</span>'+esc(n.name||n.id)+(n.is_stale?' <span class="stale">陈旧</span>':'')+(isF?' <span class="meta" style="font-size:11px;font-weight:400">文件夹</span>':'')+'</button>';
     }).join('')||'<div class="ph">无页面</div>';
+    $('btn-export-one').style.display='none';
     document.querySelectorAll('#pagetree .pnode').forEach(function(el){
       el.onclick=function(){
         document.querySelectorAll('#pagetree .pnode').forEach(function(x){x.classList.remove('sel')});
-        el.classList.add('sel');S.pageSel=nodes[+el.getAttribute('data-i')];loadPageDetail(S.pageSel);
+        el.classList.add('sel');S.pageSel=nodes[+el.getAttribute('data-i')];
+        var n=S.pageSel;
+        if((n.kind==='folder')||n.is_folder)showFolderDetail(n);
+        else loadPageDetail(n);
       };
     });
     S.loaded.pages=true;
   }).catch(function(e){$('pagetree').innerHTML='<div class="ph">加载失败：'+esc(e.message||e)+'</div>'});
+}
+function showFolderDetail(n){
+  var kids=(S.pagesCache||[]).filter(function(x){return x.parent_id===n.id});
+  $('btn-export-one').style.display='none';
+  $('pageview').innerHTML='<div class="detail">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><b style="font-size:16px">📁 '+esc(n.name)+'</b><span class="meta">文件夹 · '+kids.length+' 个聚合页</span></div>'
+    +'<div class="muted" style="line-height:1.8">文件夹本身没有正文——点击左侧列表里的具体页面（📄 项目·xxx）查看该项目的蒸馏摘要。每个聚合页由引擎按该项目的署名标签（project:*）自动蒸馏，并每日定时刷新。</div>'
+    +(kids.length?'<div class="evrow" style="margin-top:10px"><span class="et">包含页面</span><span>'+kids.map(function(k){return esc(k.name||k.id)}).join(' · ')+'</span></div>':'')
+    +'</div>';
 }
 function loadPageDetail(n){
   if(!n)return;
