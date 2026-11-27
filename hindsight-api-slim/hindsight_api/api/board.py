@@ -53,6 +53,12 @@ class BoardStaticFiles(StaticFiles):
         response = await super().get_response(path, scope)
         response.headers.setdefault("Content-Security-Policy", self.CSP)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        # ETag/Last-Modified alone let browsers apply heuristic freshness and
+        # serve a stale cached copy without revalidating (observed in the
+        # Electron renderer: a redeployed board kept showing the old UI even
+        # across app restarts, while a fresh browser showed the new one).
+        # no-cache forces revalidation on every use; ETag keeps 304s cheap.
+        response.headers.setdefault("Cache-Control", "no-cache")
         return response
 
 
