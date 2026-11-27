@@ -91,6 +91,24 @@ def _llm_current_payload() -> dict:
     base = getattr(cfg, "llm_base_url", None)
     has_key = bool(getattr(cfg, "llm_api_key", None))
     staged_model = _hkcu_env("LLM_MODEL") or _hkcu_env("HINDSIGHT_API_LLM_MODEL")
+    dprov = getattr(cfg, "decision_model_provider", None)
+    dmodel = getattr(cfg, "decision_model_model", None)
+    dbase = getattr(cfg, "decision_model_base_url", None)
+    dkey = getattr(cfg, "decision_model_api_key", None)
+    staged_dprov = _hkcu_env("HINDSIGHT_API_DECISION_MODEL_PROVIDER")
+    decision = {
+        "provider": dprov,
+        "model": dmodel,
+        "base_url": dbase,
+        "has_key": bool(dkey),
+        "staged": {
+            "provider": staged_dprov,
+            "model": _hkcu_env("HINDSIGHT_API_DECISION_MODEL_MODEL"),
+            "base_url": _hkcu_env("HINDSIGHT_API_DECISION_MODEL_BASE_URL"),
+        },
+        "staged_differs": bool(staged_dprov and staged_dprov.lower() != str(dprov or "").lower()),
+        "hint": "provider=none 表示未启用独立决策模型，相关操作走主聊天模型；hindsight/typesafe 走 System One 协议（POST {base_url}/v1/systemone）。",
+    }
     return {
         "provider": getattr(cfg, "llm_provider", None),
         "model": model,
@@ -98,8 +116,58 @@ def _llm_current_payload() -> dict:
         "has_key": has_key,
         "staged_model": staged_model,
         "staged_differs": bool(staged_model and model and staged_model != model),
+        "decision": decision,
         "hint": "当前生效=进程内已构建配置；staged=HKCU\\Environment 登记值（重启 DeepSeek Harness 后生效）。"
         "若由助手代重启，重启时必须显式注入新 env（进程 env 优先级高于 profile 文件）。",
+    }
+
+
+_DECISION_PROVIDER_ENV = "HINDSIGHT_API_DECISION_MODEL_PROVIDER"
+_DECISION_MODEL_ENV = "HINDSIGHT_API_DECISION_MODEL_MODEL"
+_DECISION_BASE_ENV = "HINDSIGHT_API_DECISION_MODEL_BASE_URL"
+
+
+def _llm_select_decision_payload(payload: dict):
+    """Stage the decision-model choice into HKCU\\Environment (restart-required).
+
+    Whitelisted keys only: provider (required), model and base_url (optional).
+    The API key is deliberately NOT writable here (same discipline as the main
+    model slot).
+    """
+    from ..config import DECISION_MODEL_PROVIDERS
+
+    body = payload or {}
+    provider = str(body.get("provider") or "").strip().lower()
+    model = str(body.get("model") or "").strip()
+    base = str(body.get("base_url") or "").strip()
+    if provider not in DECISION_MODEL_PROVIDERS:
+        return JSONResponse(
+            {"detail": f"provider 必须是 {'/'.join(DECISION_MODEL_PROVIDERS)} 之一"},
+            status_code=400,
+        )
+    if base and not base.lower().startswith(("http://", "https://")):
+        return JSONResponse({"detail": "base_url 必须是 http(s) 地址"}, status_code=400)
+    previous = {
+        "provider": _hkcu_env(_DECISION_PROVIDER_ENV),
+        "model": _hkcu_env(_DECISION_MODEL_ENV),
+        "base_url": _hkcu_env(_DECISION_BASE_ENV),
+    }
+    written = {}
+    _hkcu_set(_DECISION_PROVIDER_ENV, provider)
+    written[_DECISION_PROVIDER_ENV] = provider
+    if model:
+        _hkcu_set(_DECISION_MODEL_ENV, model)
+        written[_DECISION_MODEL_ENV] = model
+    if base:
+        _hkcu_set(_DECISION_BASE_ENV, base.rstrip("/"))
+        written[_DECISION_BASE_ENV] = base.rstrip("/")
+    return {
+        "staged": True,
+        "written": written,
+        "previous": previous,
+        "restart_required": True,
+        "hint": "已登记到 HKCU\\Environment（用户级）。重启 DeepSeek Harness 后新进程读取生效；"
+        "进程 env 优先级陷阱同主模型（助手代重启须显式注入）。API key 如需更换请手动 setx HINDSIGHT_API_DECISION_MODEL_API_KEY。",
     }
 
 
@@ -196,4 +264,5 @@ def mount_board(app: FastAPI) -> None:
     app.add_api_route("/ui-ext/llm/current", lambda: _llm_current_payload(), methods=["GET"])
     app.add_api_route("/ui-ext/llm/models", _llm_models_payload, methods=["POST"])
     app.add_api_route("/ui-ext/llm/select", _llm_select_payload, methods=["POST"])
+    app.add_api_route("/ui-ext/llm/select-decision", _llm_select_decision_payload, methods=["POST"])
     logging.info("Board UI mounted at /ui (%s)", BOARD_DIR)

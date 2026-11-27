@@ -556,6 +556,9 @@ button.dis{opacity:.45;cursor:not-allowed}
           <div class="frow"><div class="flabel"><b>拉取模型列表</b><code>base_url</code></div><div class="fctrl" style="display:flex;gap:8px"><input id="llm-base" type="text" style="flex:1" placeholder="留空=用当前 base_url；如 https://api.deepseek.com/v1"><input id="llm-key" type="password" style="width:170px" placeholder="API key（可选，仅本次请求）"><button class="btn ghost" id="llm-fetch">⇩ 获取</button></div><div class="fhint">服务端代理 POST /ui-ext/llm/models → {base_url}/models（8s 超时 · 1MB 上限 · key 仅在途不落盘）</div></div>
           <div class="frow"><div class="flabel"><b>选择主模型</b></div><div class="fctrl" style="display:flex;gap:8px"><select id="llm-model" style="flex:1"><option value="">← 先获取模型列表，或直接手填</option></select><input id="llm-model-manual" type="text" style="width:210px" placeholder="或手填模型名"><button class="btn" id="llm-apply">应用（登记 · 重启生效）</button></div><div class="fhint">写 HKCU\Environment 的 LLM_MODEL（+LLM_BASE_URL 可选）= 用户级登记；重启 DeepSeek Harness 后新进程读取生效。引擎不支持运行时热切换——不存在「立即生效」项。</div></div>
           <div class="cfg-msg" id="llm-msg" hidden></div>
+          <div class="frow" style="border-top:1px dashed var(--line-soft);margin-top:14px;padding-top:14px"><div class="flabel"><b>决策模型 · 当前生效</b><code>recall 重排 / 反思 / 归纳 / 页面刷新 的独立判定槽</code></div><div class="fctrl" id="dm-cur"><span class="muted">加载中…</span></div><div class="fhint">none=未启用独立决策模型，相关操作直接走上方主聊天模型。hindsight/typesafe 走 System One 协议（POST {base}/v1/systemone）；openai=OpenAI Decisions API；cloudflare=clef。</div></div>
+          <div class="frow"><div class="flabel"><b>选择决策模型</b></div><div class="fctrl" style="display:flex;gap:8px"><select id="dm-provider" style="width:170px"><option value="none">none（不启用）</option><option value="hindsight">hindsight（System One）</option><option value="typesafe">typesafe（System One）</option><option value="cloudflare">cloudflare（clef）</option><option value="openai">openai（Decisions API）</option></select><input id="dm-base" type="text" style="flex:1" placeholder="base_url 可选；LAN jev 服务如 http://192.168.1.14:11440"><input id="dm-model" type="text" style="width:200px" placeholder="模型名可选（jev-latest / hs-decide-1-flash）"><button class="btn" id="dm-apply">应用（登记 · 重启生效）</button></div><div class="fhint">写 HKCU\Environment 的 HINDSIGHT_API_DECISION_MODEL_PROVIDER / _MODEL / _BASE_URL（用户级登记，重启 DeepSeek Harness 后生效）。System One 端点无 /models 列表可拉，模型名手填；key 需手动 setx HINDSIGHT_API_DECISION_MODEL_API_KEY（LAN jev 服务不校验 key，占位即可）。</div></div>
+          <div class="cfg-msg" id="dm-msg" hidden></div>
         </div>
         <div class="card"><div class="sect" style="margin-top:0;font-size:14px">其余配置（只读 · 白名单外字段）</div><div class="muted" id="cfg-rohint"></div><button class="btn ghost" id="cfg-foldbtn" style="margin-top:8px">▸ 展开全部只读键</button><pre id="cfg-foldpre" hidden></pre></div>
         <div class="epi">数据源：GET/PATCH /v1/default/banks/{id}/config（同源直取）· PATCH 为 updates 部分提交、merge 语义、整批原子（任一字段非法整批 400 零写入）· 热生效无需重启 · 回滚=「回滚到最近保存」整包 PATCH 快照 · 凭据/LLM/端口/DB 类为服务器级字段，引擎 400 硬拒</div>
@@ -1666,8 +1669,8 @@ function cfgSaveModal(){
 }
 function cfgModalStep2(){
   var a=S.mdAction;if(!a)return;
-  $('modal-title').textContent=(a.type==='save'?'确认写入（2/2）':(a.type==='llm'?'确认登记（2/2）':'确认回滚（2/2）'));
-  $('modal-body').innerHTML='<div class="muted">'+(a.type==='llm'?'登记立即写入 HKCU；当前 daemon 仍跑旧模型，重启 DeepSeek Harness 后生效。':'写入立即生效，影响 daemon 后续摄取/归纳/召回行为（直写本库配置）。')+'</div>';
+  $('modal-title').textContent=(a.type==='save'?'确认写入（2/2）':(a.type==='llm'?'确认登记主模型（2/2）':(a.type==='llm-decision'?'确认登记决策模型（2/2）':'确认回滚（2/2）')));
+  $('modal-body').innerHTML='<div class="muted">'+(a.type==='llm'||a.type==='llm-decision'?'登记立即写入 HKCU；当前 daemon 仍跑旧配置，重启 DeepSeek Harness 后生效。':'写入立即生效，影响 daemon 后续摄取/归纳/召回行为（直写本库配置）。')+'</div>';
   var btn=$('modal-confirm');btn.hidden=false;btn.disabled=true;var n=3;
   btn.textContent='请稍候 '+n+'s…';
   if(S.mdTimer)clearInterval(S.mdTimer);
@@ -1676,7 +1679,7 @@ function cfgModalStep2(){
 }
 $('modal-next').onclick=cfgModalStep2;
 $('modal-cancel').onclick=closeModal;
-$('modal-confirm').onclick=function(){var a=S.mdAction;closeModal();if(!a)return;if(a.type==='save')doSave(a.u);else if(a.type==='llm')doLlmSelect(a);else doRestore()};
+$('modal-confirm').onclick=function(){var a=S.mdAction;closeModal();if(!a)return;if(a.type==='save')doSave(a.u);else if(a.type==='llm')doLlmSelect(a);else if(a.type==='llm-decision')doLlmDecision(a);else doRestore()};
 function doSave(u){
   if(!Object.keys(u.updates).length&&!u.nameDirty){cfgMsg('没有需要保存的更改');return}
   S.cfgBusy=true;syncCfgLock();
@@ -1723,7 +1726,19 @@ function loadLlmCurrent(){
     $('llm-cur').innerHTML='<span class="b b-done">'+esc(d.provider||'—')+'</span> <code>'+esc(trunc(d.model||'—',60))+'</code>'
       +(d.has_key?'':' <span class="b b-wait">未配置 key</span>')
       +(d.staged_differs?' <span class="b b-run">已登记待重启：'+esc(trunc(d.staged_model,40))+'</span>':'');
+    renderDecision(d.decision||{});
   }).catch(function(e){$('llm-cur').innerHTML='<span class="muted">读取失败：'+esc(e.message||e)+'</span>'});
+}
+function dmMsg(t,cls){var m=$('dm-msg');m.hidden=false;m.className='cfg-msg '+(cls||'');m.textContent=t}
+function renderDecision(dd){
+  var cur=String(dd.provider||'none').toLowerCase();
+  var eff=(cur==='none')?'未启用（相关操作走主聊天模型）':(esc(cur)+' · '+esc(dd.model||'（provider 默认模型）')+(dd.base_url?(' @ '+esc(trunc(dd.base_url,40))):''));
+  var html='<span class="b '+(cur==='none'?'b-wait':'b-done')+'">'+eff+'</span>'+(dd.has_key?'':' <span class="b b-wait">未配置 key</span>');
+  var st=dd.staged||{};
+  if(st.provider||st.model||st.base_url)html+=' <span class="b b-run">已登记待重启：'+esc(st.provider||cur)+(st.model?(' · '+esc(trunc(st.model,40))):'')+'</span>';
+  $('dm-cur').innerHTML=html;
+  if(!$('dm-base').value&&dd.base_url)$('dm-base').value=dd.base_url;
+  if(!$('dm-model').value&&dd.model)$('dm-model').value=dd.model;
 }
 $('llm-fetch').onclick=function(){
   var btn=$('llm-fetch');btn.textContent='… 拉取中';btn.disabled=true;
@@ -1755,6 +1770,29 @@ function doLlmSelect(a){
     llmMsg('已登记 '+(d.written?Object.keys(d.written).join(' + '):'')+' —— 重启 DeepSeek Harness 后生效。'+(d.previous&&d.previous.LLM_MODEL?('（原值：'+trunc(d.previous.LLM_MODEL,60)+'）'):''), 'ok');
     loadLlmCurrent();
   }).catch(function(e){llmMsg('登记失败：'+(e.message||e),'err')});
+}
+$('dm-apply').onclick=function(){
+  var prov=($('dm-provider').value||'none');
+  var base=$('dm-base').value.trim();
+  var model=$('dm-model').value.trim();
+  if(base&&!/^https?:\/\//i.test(base)){dmMsg('base_url 必须是 http(s) 地址','err');return}
+  openModal('登记决策模型（重启生效）',
+    '<div class="diffrow"><span class="dk">HINDSIGHT_API_DECISION_MODEL_PROVIDER</span><span class="dnew">'+esc(prov)+'</span></div>'
+    +(model?'<div class="diffrow"><span class="dk">HINDSIGHT_API_DECISION_MODEL_MODEL</span><span class="dnew">'+esc(trunc(model,120))+'</span></div>':'')
+    +(base?'<div class="diffrow"><span class="dk">HINDSIGHT_API_DECISION_MODEL_BASE_URL</span><span class="dnew">'+esc(trunc(base,120))+'</span></div>':'')
+    +'<div class="muted" style="margin-top:8px">写入 HKCU\\Environment（用户级登记）。重启 DeepSeek Harness 后新进程生效；none=相关操作走主聊天模型。API key 需手动 setx HINDSIGHT_API_DECISION_MODEL_API_KEY（LAN jev 服务不校验 key）。</div>');
+  $('modal-next').hidden=false;
+  S.mdAction={type:'llm-decision',provider:prov,model:model,base:base};
+};
+function doLlmDecision(a){
+  var body={provider:a.provider};
+  if(a.model)body.model=a.model;
+  if(a.base)body.base_url=a.base;
+  jpatch('/ui-ext/llm/select-decision',body,30000)
+  .then(function(d){
+    dmMsg('已登记 '+(d.written?Object.keys(d.written).join(' + '):'')+' —— 重启 DeepSeek Harness 后生效。','ok');
+    loadLlmCurrent();
+  }).catch(function(e){dmMsg('登记失败：'+(e.message||e),'err')});
 }
 
 /* ───────────── 帮助目录 ───────────── */
